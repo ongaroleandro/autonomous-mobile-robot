@@ -37,8 +37,31 @@ Tasks:
 
 # Software used
 
+ - [Ubuntu 18.04.5 LTS](https://releases.ubuntu.com/18.04/) for the laptop
+ - [Ubuntu 18.04.5 LTS server](https://cdimage.ubuntu.com/releases/18.04/release/) (from a preinstalled server image) for the Raspberry Pi
+ - [ROS melodic](http://wiki.ros.org/melodic)
+ - [Arduino IDE](https://www.arduino.cc/en/software)
+
 # Hardware used
+
+ - A laptop
+ - Raspberry Pi 3B+ (from now on referred to as RPI)
+ - Arduino Uno Rev3
+ - Microsoft xbox 360 Kinect (model 1414) + power adapter
+ - Cytron MDD10A DC motor driver
+ - ~~Pololu 380:1 micro metal gearmotor HPCB 12V with extended motor shaft~~ Wrong motor arrived so for now using Pololu 60:1 micro metal gearmotor 12V without extended shaft
+ - Pololu 12CPR magnetic encoder kit
+ - Pololu 1/2" metal ball caster
+ - Xiaomi 10000 mAh powerbank
+ - 12 V battery holder
+
 ## Parts
+
+ - Various nuts and bolts
+ - Plastic 6mm threaded rod
+ - Plasting M6 nuts
+ - 3mm and 6mm mdf plates
+
 # Robot design
 # Setting up ROS melodic
 ## ROS on RPI
