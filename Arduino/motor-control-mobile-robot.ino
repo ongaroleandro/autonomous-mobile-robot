@@ -18,8 +18,8 @@ Truth table motor driver:
 //Angular velocity of left motor w_l, right motor w_r 
 double w_r=0, w_l=0, dw_r=0, dw_l=0, abs_dw_l=0, abs_dw_r=0;
 
-//wheel_rad is the wheel radius ,wheel_sep is distance between wheels
-double wheel_rad = 1, wheel_sep = 1;
+//wheel_rad is the wheel radius in meter,wheel_sep is distance between wheels in meter
+double wheel_rad = 0.025, wheel_sep = 0.210;
 
 //rosserial, setup node. Allows program to subscribe/publish topics
 ros::NodeHandle nh;
@@ -41,9 +41,9 @@ geometry_msgs/Vector3 angular
 void messageCb( const geometry_msgs::Twist& msg){
   speed_ang = msg.angular.z;
   speed_lin = msg.linear.x;
-  w_r = (speed_lin/wheel_rad) + ((speed_ang*wheel_sep)/(2.0*wheel_rad));
-  w_l = (speed_lin/wheel_rad) - ((speed_ang*wheel_sep)/(2.0*wheel_rad));
-  dw_r = w_r*255;    //dw_r is w_l transformed to motor driver value
+  w_r = ((speed_lin/wheel_rad) + ((speed_ang*wheel_sep)/(2.0*wheel_rad)))*30;
+  w_l = ((speed_lin/wheel_rad) - ((speed_ang*wheel_sep)/(2.0*wheel_rad)))*30;
+  dw_r = w_r*255;    //dw_r is w_l transformed into motor driver value
   dw_l = w_l*255;
 }
 
