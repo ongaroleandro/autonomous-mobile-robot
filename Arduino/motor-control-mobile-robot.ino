@@ -1,6 +1,7 @@
 #include <ArduinoHardware.h>
 #include <ros.h>
-#include <geometry_msgs/Twist.h>    //contains the topic cmd_vel
+#include <geometry_msgs/Twist.h>    //message type cmd_vel sends
+#include <std_msgs/Float32MultiArray.h>
 #define PWM_1 3
 #define DIR_1 4
 #define PWM_2 6
@@ -43,12 +44,16 @@ void messageCb( const geometry_msgs::Twist& msg){
   speed_lin = msg.linear.x;
   w_r = ((speed_lin/wheel_rad) + ((speed_ang*wheel_sep)/(2.0*wheel_rad)))*30;
   w_l = ((speed_lin/wheel_rad) - ((speed_ang*wheel_sep)/(2.0*wheel_rad)))*30;
-  dw_r = w_r*255;    //dw_r is w_l transformed into motor driver value
-  dw_l = w_l*255;
+  dw_r = 255*w_r/1602;    //dw_r is w_r transformed into motor driver value
+  dw_l = 255*w_l/1602;
 }
 
 //rosserial, subscibe to topic cmd_vel (this is the Twist msg i.e. vector3 linear and vector3 angular) and execute messageCb when a message from the topic is received
 ros::Subscriber<geometry_msgs::Twist> sub("cmd_vel", &messageCb );
+
+//setup publisher node
+std_msgs::Float32MultiArray array_msg;
+ros::Publisher pub("motor_controller_data", &array_msg);
 
 void Motors_init();
 void MotorL(int Pulse_Width1);
@@ -59,11 +64,24 @@ void setup(){
  Motors_init();
  nh.initNode();
  nh.subscribe(sub);
+ //defining multiarray layout, not really necessary except for last 3 lines
+ array_msg.layout.dim = (std_msgs::MultiArrayDimension *)
+ malloc(sizeof(std_msgs::MultiArrayDimension)*2);
+ array_msg.layout.dim[0].label = "[dw_l, dw_r]";
+ array_msg.layout.dim[0].size = 2;
+ array_msg.data = (float*)malloc(sizeof(float) *2);
+ array_msg.data_length=2;
+ nh.advertise(pub);
 }
 void loop(){
  MotorL(dw_l);
  MotorR(dw_r);
+
+ array_msg.data[0] = dw_l;
+ array_msg.data[1] = dw_r;
+ pub.publish(&array_msg);
  nh.spinOnce();
+ delay(100);
 }
 
 //Motor initialisation (i.e. state of motor on startup)
