@@ -1,5 +1,5 @@
+The purpose of this github page is to document my progress throughout the project. In the future I also want this github page to serve as a guide for other people to build their own robot, so some of the text is written in this 'how to do stuff' way.
 
-``
 # Table of Contents
 * [Introduction](#introduction)
 * [Software used](#software-used)
@@ -22,6 +22,12 @@
   * [Testing Arduino code](#testing-arduino-code)
 
 # Introduction
+This project came about because of the COVID-19 pandemic. In normal times I would have had the opportunity to work with the turtlebot3 for one of the courses I am enrolled in.
+
+Since we were not allowed to have hands-on exercise sessions and sending every student a turtlebot3 was not possible, the exercise sessions mainly consisted of completing partially written code in Python. I should note however that the goal of the exercise session was not to learn how to write code for a robot, but to grasps the concepts from the lectures (e.g. the kallman filter and different path planning algorithms). 
+
+While the exercise sessions succeeded in this area, I was still itching to learn how to write code for a robot and to see this code in action. Throughout the semester I started my research on what was needed to make a turtlebot3-like robot and devised a sort of action plan. After my exams I finally started this project.
+
 Tasks:
 - [x] Setting up ROS on rpi and laptop.
 - [x] Installing RTABMAP ros.
@@ -49,7 +55,7 @@ Tasks:
  - Arduino Uno Rev3
  - Microsoft xbox 360 Kinect (model 1414) + power adapter
  - Cytron MDD10A DC motor driver
- - ~~Pololu 380:1 micro metal gearmotor HPCB 12V with extended motor shaft~~ Wrong motor arrived so for now using Pololu 60:1 micro metal gearmotor 12V without extended shaft
+ - ~~Pololu 380:1 micro metal gearmotor HPCB 12V with extended motor shaft~~ Wrong motor arrived so for now using Pololu 30:1 micro metal gearmotor 12V without extended shaft
  - Pololu 12CPR magnetic encoder kit
  - Pololu 1/2" metal ball caster
  - Xiaomi 10000 mAh powerbank
