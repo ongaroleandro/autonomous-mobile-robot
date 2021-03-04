@@ -53,7 +53,7 @@ ros::Subscriber<geometry_msgs::Twist> sub("cmd_vel", &messageCb );
 
 //setup publisher node
 std_msgs::Float32MultiArray array_msg;
-ros::Publisher pub("motor_controller_data", &array_msg);
+ros::Publisher pub("arduino_data", &array_msg);
 
 void Motors_init();
 void MotorL(int Pulse_Width1);
@@ -67,7 +67,7 @@ void setup(){
  //defining multiarray layout, not really necessary except for last 3 lines
  array_msg.layout.dim = (std_msgs::MultiArrayDimension *)
  malloc(sizeof(std_msgs::MultiArrayDimension)*2);
- array_msg.layout.dim[0].label = "[dw_l, dw_r]";
+ array_msg.layout.dim[0].label = "[w_l, w_r]";
  array_msg.layout.dim[0].size = 2;
  array_msg.data = (float*)malloc(sizeof(float) *2);
  array_msg.data_length=2;
@@ -77,11 +77,10 @@ void loop(){
  MotorL(dw_l);
  MotorR(dw_r);
 
- array_msg.data[0] = dw_l;
- array_msg.data[1] = dw_r;
+ array_msg.data[0] = w_l;
+ array_msg.data[1] = w_r;
  pub.publish(&array_msg);
  nh.spinOnce();
- delay(100);
 }
 
 //Motor initialisation (i.e. state of motor on startup)
