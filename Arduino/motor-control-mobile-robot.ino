@@ -2,6 +2,7 @@
 #include <ros.h>
 #include <geometry_msgs/Twist.h>    //message type cmd_vel sends
 #include <std_msgs/Float32MultiArray.h>
+
 #define PWM_1 3
 #define DIR_1 4
 #define PWM_2 6
@@ -9,27 +10,29 @@
 
 /*
 Truth table motor driver:
-  PWM | DIR | M1_A | M1_B 
-  
+  PWM | DIR | M_A  | M_B 
+  ----|-----|------|-----
   low | X   | Low  | Low   standstill
   high| low | high | low   counter-clockwise
   high| high| low  | high  clockwise
  */
 
-//Angular velocity of left motor w_l, right motor w_r 
-double w_r=0, w_l=0, dw_r=0, dw_l=0, abs_dw_l=0, abs_dw_r=0;
+double w_r=0, w_l=0, dw_r=0, dw_l=0, abs_dw_l=0, abs_dw_r=0;  //Angular velocity of left motor w_l, right motor w_r 
 
-//wheel_rad is the wheel radius in meter,wheel_sep is distance between wheels in meter
-double wheel_rad = 0.025, wheel_sep = 0.210;
-
-//rosserial, setup node. Allows program to subscribe/publish topics
-ros::NodeHandle nh;
+double wheel_rad = 0.025, wheel_sep = 0.210;  //wheel_rad is the wheel radius in meter,wheel_sep is distance between wheels in meter
 
 double speed_ang=0, speed_lin=0;
 
-//Calculate angular velocities of wheels based on received Twist msg
-//twist msg info:
-/*geometry_msgs/Vector3 linear
+void Motors_init();
+void MotorL(int Pulse_Width1);
+void MotorR(int Pulse_Width2);
+
+ros::NodeHandle nh; //rosserial, setup node. Allows program to subscribe/publish topics
+
+/*
+Calculate angular velocities of wheels based on received Twist msg from cmd_vel
+twist msg info:
+geometry_msgs/Vector3 linear
   float64 x
   float64 y
   float64 z
@@ -48,38 +51,34 @@ void messageCb( const geometry_msgs::Twist& msg){
   dw_l = 255*w_l/1602;
 }
 
-//rosserial, subscibe to topic cmd_vel (this is the Twist msg i.e. vector3 linear and vector3 angular) and execute messageCb when a message from the topic is received
-ros::Subscriber<geometry_msgs::Twist> sub("cmd_vel", &messageCb );
+ros::Subscriber<geometry_msgs::Twist> sub("cmd_vel", &messageCb ); //rosserial, subscibe to topic cmd_vel (this is the Twist msg i.e. vector3 linear and vector3 angular) and execute messageCb when a message from the topic is received
 
-//setup publisher node
-std_msgs::Float32MultiArray array_msg;
-ros::Publisher pub("arduino_data", &array_msg);
+std_msgs::Float32MultiArray array_msg;  //type of message we want to publish
+ros::Publisher pub("arduino_data", &array_msg); //setup publisher node named arduino_data
 
-void Motors_init();
-void MotorL(int Pulse_Width1);
-void MotorR(int Pulse_Width2);
-
-//Arduino initialisation(void setup()) and program it should run(void loop())
 void setup(){
  Motors_init();
  nh.initNode();
- nh.subscribe(sub);
- //defining multiarray layout, not really necessary except for last 3 lines
+ nh.subscribe(sub); //start subscriber node
+ 
+ //defining multiarray layout, not really necessary except for lines 69 and 70
  array_msg.layout.dim = (std_msgs::MultiArrayDimension *)
  malloc(sizeof(std_msgs::MultiArrayDimension)*2);
  array_msg.layout.dim[0].label = "[w_l, w_r]";
  array_msg.layout.dim[0].size = 2;
  array_msg.data = (float*)malloc(sizeof(float) *2);
  array_msg.data_length=2;
- nh.advertise(pub);
+ 
+ nh.advertise(pub); //start publisher node
 }
+
 void loop(){
  MotorL(dw_l);
  MotorR(dw_r);
 
  array_msg.data[0] = w_l;
  array_msg.data[1] = w_r;
- pub.publish(&array_msg);
+ pub.publish(&array_msg); //publish message
  nh.spinOnce();
 }
 
@@ -94,7 +93,8 @@ void Motors_init(){
  digitalWrite(DIR_1, LOW);
  digitalWrite(DIR_2, LOW);
 }
-//Motor states
+
+//Motor states, DIR_2 is opposite of DIR_1
 void MotorL(int Pulse_Width1){
   if (Pulse_Width1 >= 255){
     analogWrite(PWM_1, 255);
