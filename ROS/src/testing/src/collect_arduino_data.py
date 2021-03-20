@@ -21,7 +21,7 @@ def fill_array(msg):
     #rospy.loginfo(wl)
 
 def write_to_csv():
-    np.savetxt('data.csv', data, fmt="%d", delimiter=',')
+    np.savetxt('data.csv', data, fmt="%1.3f", delimiter=',')
 
 def init_node():
     rospy.init_node('arduino_data_collector', anonymous=True) #anonymous=True appends a unique ID to the node name
