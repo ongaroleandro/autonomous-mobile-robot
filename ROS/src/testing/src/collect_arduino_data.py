@@ -7,18 +7,21 @@ from geometry_msgs.msg import Twist
 from std_msgs.msg import Float32MultiArray
 from matplotlib import pyplot as plt
 
-wl_wr = []
+data = []
 def fill_array(msg):
-    wl = msg.data[0]
-    wr = msg.data[1]
+    DIR_L = msg.data[0]
+    wl = msg.data[1]
+    DIR_R = msg.data[2]
+    wr = msg.data[3]
+    time = msg.data[4]
     #speed_ang = msg.angular.z
     #speed_lin = msg.linear.x
     #t_zero = int(rospy.Time.now().to_sec())
-    wl_wr.append([wl, wr, int(rospy.Time.now().to_sec())])
-    rospy.loginfo(wl)
+    data.append([DIR_L, wl, DIR_R, wr, time])
+    #rospy.loginfo(wl)
 
 def write_to_csv():
-    np.savetxt('data.csv', wl_wr, fmt="%d", delimiter=',')
+    np.savetxt('data.csv', data, fmt="%d", delimiter=',')
 
 def init_node():
     rospy.init_node('arduino_data_collector', anonymous=True) #anonymous=True appends a unique ID to the node name
