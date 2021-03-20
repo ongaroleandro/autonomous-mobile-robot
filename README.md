@@ -60,7 +60,7 @@ Tasks:
  - Arduino Uno Rev3
  - Microsoft xbox 360 Kinect (model 1414) + power adapter
  - Cytron MDD10A DC motor driver
- - ~~Pololu 380:1 micro metal gearmotor HPCB 12V with extended motor shaft~~ Wrong motor arrived so for now using Pololu 30:1 micro metal gearmotor 12V without extended shaft
+ - Pololu 380:1 micro metal gearmotor HPCB 12V with extended motor shaft
  - Pololu 12CPR magnetic encoder kit
  - Pololu 1/2" metal ball caster
  - Xiaomi 10000 mAh powerbank
@@ -203,11 +203,13 @@ The [pose](http://docs.ros.org/en/noetic/api/geometry_msgs/html/msg/Pose.html) c
 
 The kinematics of a 2 wheel differential drive robot are well known. [This](https://www.hmc.edu/lair/ARW/ARW-Lecture01-Odometry.pdf) lecture by Chris Clark gives us the equations we need and also explains the derivation of them step by step. 
 The equations are:
-INSERT IMAGE WITH EQUATIONS
+
+![pose equations](media/pose%20equations.png)
+
 ### First iteration of python code
 *The idea for this code was to calculate the pose of our robot but I also wanted to keep a list with all locations our robot has been. This list will then be written to a csv file when this node is closed so I could look at the data afterwards.*
 
-The equations translated into Python code (the full code can be found at `PATH`):
+The equations translated into Python code (the full code can be found at `/stuff still proof of concept stage`):
 
 ```python
 x_y_theta_t = [[0, 0, 0, 0]]
@@ -273,7 +275,7 @@ Now that we have Δθ and Δs we can calculate , x, y and θ.
 
 Finally we append the x-position, y-position, θ and the time to our list x_y_theta_t.
 
-*At the time of writing this code I do not have the encoders working, so to test this code I simulated the encoder messages as a list. The python file I used for testing can be found in `PATH`*
+*At the time of writing this code I do not have the encoders working, so to test this code I simulated the encoder messages as a list. The python file I used for testing can be found at `/stuff in proof of concept stage/testing-odometry-calculation.py`*
 
 ### Second iteration of python code
-After looking at the previous code some more I realised that when our robot is fuly working, we wouldn't need to keep track of all the positions our robot has been. So I decided to rewrite the previous code a little bit. I also decided to use a numpy array instead of a list for reasons I do not know. For now I have only implented this is in the python file I used for testing. See `PATH`
+After looking at the previous code some more I realised that when our robot is fuly working, we wouldn't need to keep track of all the positions our robot has been. So I decided to rewrite the previous code a little bit. I also decided to use a numpy array instead of a list for reasons I do not know. For now I have only implented this is in the python file I used for testing. See `/stuff in proof of concept stage/testing-odometry-calculation.py`
