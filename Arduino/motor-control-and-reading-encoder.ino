@@ -2,6 +2,7 @@
 #include <ros.h>
 #include <geometry_msgs/Twist.h>    //message type cmd_vel sends
 #include <std_msgs/Float32MultiArray.h>
+#include <ros/time.h>
 #include <MD_REncoder.h>
 
 #define PWM_1 3
@@ -67,13 +68,13 @@ void setup(){
  nh.initNode();
  nh.subscribe(sub); //start subscriber node
  
- //defining multiarray layout, not really necessary except for lines 75 and 76
- array_msg.layout.dim = (std_msgs::MultiArrayDimension *)
- malloc(sizeof(std_msgs::MultiArrayDimension)*4);
- array_msg.layout.dim[0].label = "[DIR_L, w_l, DIR_R, w_r]";
- array_msg.layout.dim[0].size = 4;
- array_msg.data = (float*)malloc(sizeof(float) *4);
- array_msg.data_length=4;
+ //defining multiarray layout, not really necessary except for lines 76 and 77
+ //array_msg.layout.dim = (std_msgs::MultiArrayDimension *)
+ //malloc(sizeof(std_msgs::MultiArrayDimension)*4);
+ //array_msg.layout.dim[0].label = "[DIR_L, w_l, DIR_R, w_r]";
+ //array_msg.layout.dim[0].size = 4;
+ array_msg.data = (float*)malloc(sizeof(float) *5);
+ array_msg.data_length=5;
  
  nh.advertise(pub); //start publisher node
 }
@@ -81,12 +82,17 @@ void setup(){
 void loop(){
  MotorL(dw_l);
  MotorR(dw_r);
-
- array_msg.data[0] = L.read();
- array_msg.data[1] = L.speed();
- array_msg.data[2] = R.read();
- array_msg.data[3] = R.speed();
- pub.publish(&array_msg); //publish message
+ uint8_t xL = L.read();
+ uint8_t xR = R.read(); 
+ if(xL || xR) {
+  array_msg.data[0] = xL;
+  array_msg.data[1] = L.speed();
+  array_msg.data[2] = xR;
+  array_msg.data[3] = R.speed();
+  array_msg.data[4] = nh.now().toSec();
+  pub.publish(&array_msg); //publish message
+ }
+ 
  nh.spinOnce();
 }
 
