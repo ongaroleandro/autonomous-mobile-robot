@@ -21,6 +21,8 @@ The purpose of this github page is to document my progress throughout the projec
   * [Arduino code for controlling the motors](#arduino-code-for-controlling-the-motors)
   * [Testing Arduino code](#testing-arduino-code)
   *  [Launch file](#launch-file)
+* [Reading motor encoders](#reading-motor-encoders)
+  * [Arduino code for reading motor encoders](#arduino-code-for-reading-motor-encoders)
 * [Navigation stack](#navigation-stack)
   * [Calculating the pose from odometry](#calculating-the-pose-from-odometry)  
     * [First iteration of python code](#first-iteration-of-python-code)  
@@ -39,8 +41,9 @@ Tasks:
 - [x] Testing RTABMAP ros. 
 - [x] Writing code for controlling the motors.
 - [x] Testing the code for controlling the motors.
-- [ ] Writing code to read encoder data.
-- [ ] Testing reading encoder data code.
+- [x] Writing code to read encoder data.
+- [x] Testing reading encoder data code.
+- [x] Writing code to calculate odometry from the encoder data
 - [ ] Writing code to publish the encoder data in a `nav_msgs/Odometry` message format.
 - [ ] Testing `nav_msgs/Odometry` message code
 - [ ] Configure RTABMAP ROS
@@ -182,6 +185,76 @@ But to make our lives easier we're going to create a launch file. This way we'll
 
 ## Launch file
 The ros wiki has a [great](http://wiki.ros.org/ROS/Tutorials/UsingRqtconsoleRoslaunch#Using_roslaunch) tutorial on making a launch file and luckily it is pretty straightforward. Our launch file will have to launch rosserial and teleop_twist_keyboard. The launch file is located at `ROS/src/testing/src/`.
+
+# Reading motor encoders
+The encoder I am using has 12 counts per revolution which is equal to 3 pulses per revolution of the encoder shaft. Since the motor has a 380:1 gearbox, this makes it 1140 pulses per revolution. 
+
+To read the encoders I am using the encoder library from 1988Kramer, you can download the necessary files from [his github](https://github.com/1988kramer/motor_control). We will also need the [TimerOne](https://github.com/PaulStoffregen/TimerOne) library from Paul Stoffregen to get the encoder library to function correctly.
+
+## Arduino code for reading motor encoders
+The full code can be found in the Arduino folder of this github. Let's go over the code in detail:
+```cpp
+#include <TimerOne.h>
+#include <Encoder.h>
+```
+These are the headers we need.
+```cpp
+const long deltaT = 50000;
+```
+The `getSpeed` function of the encoder library by 1988Kramer needs to be called every deltaT microseconds, so here we're defining deltaT as 50000 microseconds or 50 miliseconds.
+
+```cpp
+Encoder motor_encoderL(2, 4, deltaT, 2280);
+Encoder motor_encoderR(3, 5, deltaT, 2280);
+```
+Here we create or two encoder objects, one for the left encoder and one for the right encoder. The encoder class needs 4 arguments; the pin on the arduino where the A phase of the encoder is connected, the pin on the arduino where the B phase of the encoder is connected, the time between `getSpeed` calls and the number of ticks per revolution.
+
+Pins 2 and 3 have to be used, since the encoder library uses interrupts and these are the only pins on an Arduino UNO which are interrupt pins. For the left encoder I am using pin 2 and pin 3. and for the right encoder I am using pin 3 and 5. In my setup I needed to connect the A phase of the left encoder to pin 2, the B phase of the left encoder to pin 4, the A phase of the right encoder to pin 5 and the B phase of the right encoder to pin 3 to get a postive speed reading from both encoders when the robot is moving forwards.
+
+As stated before, the deltaT defines how frequently we read the speed.
+
+The ticks per revolution caused some headscratching at first. At first I thought this was just the amount of pulses per revolution, so 1140. This is not the case however since we're using an interrupt which detect the change in voltage of the pin. Since a pulse is a rising edge and a falling edge, there are two changes per pulse, meaning we need to enter 2280 to get a correct speed reading.
+
+```cpp
+int Lspeed;
+int Rspeed;
+
+void read_motor_encoderL(){
+  motor_encoderL.updateCount();
+}
+
+void read_motor_encoderR(){
+  motor_encoderR.updateCount();
+}
+
+void readSpeed(){
+  Lspeed = motor_encoderL.getSpeed();
+  Rspeed = motor_encoderR.getSpeed();
+}
+```
+`read_motor_encoderL` and `read_motor_encoderR` are the functions we will attach to the interrupts of pin 2 and pin 3.  As the name suggests, the function  `readSpeed` is used to get a speed reading. The `getSpeed` function of the encoder library by 1988Krames gives us the speed in degrees per second.
+
+```cpp
+void setup(){
+ Timer1.initialize(deltaT);
+ Timer1.attachInterrupt(readSpeed);
+ attachInterrupt(0, read_motor_encoderL, CHANGE);
+ attachInterrupt(1, read_motor_encoderR, CHANGE);
+} 
+```
+With `Timer1.initialize(deltaT)` we create a timer of 50ms and with `Timer1.attachInterrupt(readSpeed)` we say that the function `readSpeed` needs to be executed each time the timer reaches 50ms.
+
+```cpp
+void loop(){
+ if(Lspeed || Rspeed) {
+  array_msg.data[0] = Lspeed;
+  array_msg.data[1] = Rspeed;
+  array_msg.data[2] = nh.now().toSec();
+  pub.publish(&array_msg); //publish message
+ }
+}
+```
+In our main arduino function we assign the value of Lspeed and Rspeed to the first and second element of our array message. For now we are only publishing our message if one of the motors is turning, this is just to make testing a little easier.
 
 # Navigation stack
 The navigation stack is essential for our robot since this is what makes our robot mobile. The navigation stack is well documented on the ROS wiki, and there's even a [tutorial](http://wiki.ros.org/navigation/Tutorials/RobotSetup) on how to set up a navigation stack.
