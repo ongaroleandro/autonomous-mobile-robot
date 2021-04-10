@@ -9,15 +9,13 @@ from matplotlib import pyplot as plt
 
 data = []
 def fill_array(msg):
-    DIR_L = msg.data[0]
-    wl = msg.data[1]
-    DIR_R = msg.data[2]
-    wr = msg.data[3]
-    time = msg.data[4]
+    wl = msg.data[0]*np.pi/180
+    wr = msg.data[1]*np.pi/180
+    time = msg.data[2]
     #speed_ang = msg.angular.z
     #speed_lin = msg.linear.x
     #t_zero = int(rospy.Time.now().to_sec())
-    data.append([DIR_L, wl, DIR_R, wr, time])
+    data.append([wl, wr, time])
     #rospy.loginfo(wl)
 
 def write_to_csv():
