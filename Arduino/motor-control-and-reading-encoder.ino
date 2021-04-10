@@ -3,12 +3,14 @@
 #include <geometry_msgs/Twist.h>    //message type cmd_vel sends
 #include <std_msgs/Float32MultiArray.h>
 #include <ros/time.h>
-#include <MD_REncoder.h>
+#include <TimerOne.h>
+#include <Encoder.h>
 
-#define PWM_1 3
-#define DIR_1 4
-#define PWM_2 6
-#define DIR_2 7
+//define pins for motor driver
+#define PWM_1 6
+#define DIR_1 7
+#define PWM_2 11
+#define DIR_2 12
 
 /*
 Truth table motor driver:
@@ -18,6 +20,8 @@ Truth table motor driver:
   high| low | high | low   counter-clockwise
   high| high| low  | high  clockwise
  */
+
+const long deltaT = 50000;
 
 double w_r=0, w_l=0, dw_r=0, dw_l=0, abs_dw_l=0, abs_dw_r=0;  //Angular velocity of left motor w_l, right motor w_r 
 
@@ -58,23 +62,26 @@ ros::Subscriber<geometry_msgs::Twist> sub("cmd_vel", &messageCb ); //rosserial, 
 std_msgs::Float32MultiArray array_msg;  //type of message we want to publish
 ros::Publisher pub("arduino_data", &array_msg); //setup publisher node named arduino_data
 
-MD_REncoder L = MD_REncoder(11, 12);
-MD_REncoder R = MD_REncoder(8, 9);
+Encoder motor_encoderL(2, 4, deltaT, 2240);  //interrupt counts rising and falling edge of a pulse, so for 1120 pulses/rev there are 2240 changes
+Encoder motor_encoderR(3, 5, deltaT, 2240);
+
+int Lspeed; //speed read from left motor encoder
+int Rspeed; //speed read from right motor encoder
 
 void setup(){
  Motors_init();
- L.begin();
- R.begin();
+ 
+ Timer1.initialize(deltaT); //set timer to deltaT ms
+ Timer1.attachInterrupt(readSpeed); //call getSpeed() from encoder.h every deltaT ms.
+ attachInterrupt(0, read_motor_encoderL, CHANGE);
+ attachInterrupt(1, read_motor_encoderR, CHANGE);
+ 
  nh.initNode();
  nh.subscribe(sub); //start subscriber node
  
- //defining multiarray layout, not really necessary except for lines 76 and 77
- //array_msg.layout.dim = (std_msgs::MultiArrayDimension *)
- //malloc(sizeof(std_msgs::MultiArrayDimension)*4);
- //array_msg.layout.dim[0].label = "[DIR_L, w_l, DIR_R, w_r]";
- //array_msg.layout.dim[0].size = 4;
- array_msg.data = (float*)malloc(sizeof(float) *5);
- array_msg.data_length=5;
+ //defining multiarray size
+ array_msg.data = (float*)malloc(sizeof(float) *3);
+ array_msg.data_length=3;
  
  nh.advertise(pub); //start publisher node
 }
@@ -82,14 +89,11 @@ void setup(){
 void loop(){
  MotorL(dw_l);
  MotorR(dw_r);
- uint8_t xL = L.read();
- uint8_t xR = R.read(); 
- if(xL || xR) {
-  array_msg.data[0] = xL;
-  array_msg.data[1] = L.speed();
-  array_msg.data[2] = xR;
-  array_msg.data[3] = R.speed();
-  array_msg.data[4] = nh.now().toSec();
+
+ if(Lspeed || Rspeed) {
+  array_msg.data[0] = Lspeed;
+  array_msg.data[1] = Rspeed;
+  array_msg.data[2] = nh.now().toSec();
   pub.publish(&array_msg); //publish message
  }
  
@@ -149,4 +153,17 @@ void MotorR(int Pulse_Width2){
     analogWrite(PWM_2, 0);
     digitalWrite(DIR_2, HIGH);
   }
+}
+
+void read_motor_encoderL(){
+  motor_encoderL.updateCount();
+}
+
+void read_motor_encoderR(){
+  motor_encoderR.updateCount();
+}
+
+void readSpeed(){
+  Lspeed = motor_encoderL.getSpeed();
+  Rspeed = motor_encoderR.getSpeed();
 }
