@@ -62,8 +62,8 @@ ros::Subscriber<geometry_msgs::Twist> sub("cmd_vel", &messageCb ); //rosserial, 
 std_msgs::Float32MultiArray array_msg;  //type of message we want to publish
 ros::Publisher pub("arduino_data", &array_msg); //setup publisher node named arduino_data
 
-Encoder motor_encoderL(2, 4, deltaT, 2240);  //interrupt counts rising and falling edge of a pulse, so for 1120 pulses/rev there are 2240 changes
-Encoder motor_encoderR(3, 5, deltaT, 2240);
+Encoder motor_encoderL(2, 4, deltaT, 2280);  //interrupt counts rising and falling edge of a pulse, so for 1120 pulses/rev there are 2240 changes
+Encoder motor_encoderR(3, 5, deltaT, 2280);
 
 int Lspeed; //speed read from left motor encoder
 int Rspeed; //speed read from right motor encoder
