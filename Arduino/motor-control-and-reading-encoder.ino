@@ -89,11 +89,14 @@ void setup(){
 void loop(){
  MotorL(dw_l);
  MotorR(dw_r);
-
+ int sec = nh.now().sec % 10000;  //this works
+ double nsec = nh.now().nsec / 100000;
+ double nsec2 = nsec / 10000;
+ 
  if(Lspeed || Rspeed) {
   array_msg.data[0] = Lspeed;
   array_msg.data[1] = Rspeed;
-  array_msg.data[2] = nh.now().toSec();
+  array_msg.data[2] = sec + nsec2;
   pub.publish(&array_msg); //publish message
  }
  
