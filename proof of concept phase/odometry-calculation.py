@@ -10,11 +10,11 @@ wheel_sep = 0.210
 
 
 def calc_pos(msg):
-    DIR_L = msg.data[0]
-    wl = msg.data[1]
-    DIR_R = msg.data[2]
-    wr = msg.data[3]
-    t_ard = msg.data[4]
+    if (len(x_y_theta_t) == 1):
+        x_y_theta_t.append([0, 0, 0, msg.data[2]])
+    wl = msg.data[0]*np.pi/180
+    wr = msg.data[1]*np.pi/180
+    t_ard = msg.data[2]
    
     delta_theta = (-wl * r_wheel * (t_ard - x_y_theta_t[-1][3]) + wr * r_wheel * (t_ard - x_y_theta_t[-1][3])) / wheel_sep
     delta_s = (wl * r_wheel * (t_ard - x_y_theta_t[-1][3]) + wr * r_wheel * (t_ard - x_y_theta_t[-1][3])) * 0.5
