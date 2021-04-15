@@ -246,15 +246,21 @@ With `Timer1.initialize(deltaT)` we create a timer of 50ms and with `Timer1.atta
 
 ```cpp
 void loop(){
+ int sec = nh.now().sec % 10000;
+ double nsec = nh.now().nsec / 100000;
+ double nsec2 = nsec / 10000;
+ 
  if(Lspeed || Rspeed) {
   array_msg.data[0] = Lspeed;
   array_msg.data[1] = Rspeed;
-  array_msg.data[2] = nh.now().toSec();
+  array_msg.data[2] = sec + nsec2;
   pub.publish(&array_msg); //publish message
  }
 }
 ```
 In our main arduino function we assign the value of Lspeed and Rspeed to the first and second element of our array message. For now we are only publishing our message if one of the motors is turning, this is just to make testing a little easier.
+
+Sending the currect time with the current speed reading is done in a hacky way. Apparantly the number returned by `nh.now().toSect()`is too big for the arduino to handle so we split it up in the most hacky way possible. We take the last four digits of the second part with `nh.now().sec % 10000` and we divide the nanosecond part in two stages (because doing it in one go does not work, for some reason). Then we add them together and assign it to the third element of our array message with `array_msg.data[2] = sec + nsec2`.
 
 # Navigation stack
 The navigation stack is essential for our robot since this is what makes our robot mobile. The navigation stack is well documented on the ROS wiki, and there's even a [tutorial](http://wiki.ros.org/navigation/Tutorials/RobotSetup) on how to set up a navigation stack.
@@ -291,11 +297,11 @@ wheel_sep = 0.210
 
 
 def calc_pos(msg):
-    DIR_L = msg.data[0]
-    wl = msg.data[1]
-    DIR_R = msg.data[2]
-    wr = msg.data[3]
-    t_ard = msg.data[4]
+    if (len(x_y_theta_t) == 1):
+        x_y_theta_t.append([0, 0, 0, msg.data[2]])
+    wl = msg.data[0]*np.pi/180
+    wr = msg.data[1]*np.pi/180
+    t_ard = msg.data[2]
    
     delta_theta = (-wl * r_wheel * (t_ard - x_y_theta_t[-1][3]) + wr * r_wheel * (t_ard - x_y_theta_t[-1][3])) / wheel_sep
     delta_s = (wl * r_wheel * (t_ard - x_y_theta_t[-1][3]) + wr * r_wheel * (t_ard - x_y_theta_t[-1][3])) * 0.5
@@ -316,16 +322,15 @@ The list x_y_theta_t contains our x-position, y-position, angle w.r.t. x-axis an
 
 ```python
 def calc_pos(msg):
-    DIR_L = msg.data[0]
-    wl = msg.data[1]
-    DIR_R = msg.data[2]
-    wr = msg.data[3]
-    t_ard = msg.data[4]
+    if (len(x_y_theta_t) == 1):
+        x_y_theta_t.append([0, 0, 0, msg.data[2]])
+    wl = msg.data[0]*np.pi/180
+    wr = msg.data[1]*np.pi/180
+    t_ard = msg.data[2]
 ```
 
-Then we define our definition `calc_pos()` and assign the the contents of the topic we receive to their respective variables. 
+Then we define our definition `calc_pos()` and assign the the contents of the topic we receive to their respective variables. The if statement is there because the time contained in the message we receive is not the seconds elapsed since starting the node. The time we receive is the current time in seconds by using `nh.now()`, see the section on reading the motor encoders for more details. Without the if statement the first Δt we calculate would be enormous and incorrect.
 
-***NOTE:** for the time being I don't do anything with the direction variables DIR_L and DIR_R because I don't know how I will indicate the direction. This is because I'm still having trouble getting the encoders to work.*
 
 ```python
     delta_theta = (-wl * r_wheel * (t_ard - x_y_theta_t[-1][3]) + wr * r_wheel * (t_ard - x_y_theta_t[-1][3])) / wheel_sep
