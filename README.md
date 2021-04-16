@@ -212,13 +212,13 @@ The `getSpeed` function of the encoder library by 1988Kramer needs to be called 
 Encoder motor_encoderL(2, 4, deltaT, 2280);
 Encoder motor_encoderR(3, 5, deltaT, 2280);
 ```
-Here we create or two encoder objects, one for the left encoder and one for the right encoder. The encoder class needs 4 arguments; the pin on the arduino where the A phase of the encoder is connected, the pin on the arduino where the B phase of the encoder is connected, the time between `getSpeed` calls and the number of ticks per revolution.
+Here we create our two encoder objects, one for the left encoder and one for the right encoder. The encoder class needs 4 arguments; the pin on the arduino where the A phase of the encoder is connected, the pin on the arduino where the B phase of the encoder is connected, the time between `getSpeed` calls and the number of ticks per revolution.
 
-Pins 2 and 3 have to be used, since the encoder library uses interrupts and these are the only pins on an Arduino UNO which are interrupt pins. For the left encoder I am using pin 2 and pin 3. and for the right encoder I am using pin 3 and 5. In my setup I needed to connect the A phase of the left encoder to pin 2, the B phase of the left encoder to pin 4, the A phase of the right encoder to pin 5 and the B phase of the right encoder to pin 3 to get a postive speed reading from both encoders when the robot is moving forwards.
+Pins 2 and 5 have to be used, since the encoder library uses interrupts and these are the only pins on an Arduino UNO which are interrupt pins. For the left encoder I am using pin 2 and pin 3. and for the right encoder I am using pin 3 and 5. In my setup I needed to connect the A phase of the left encoder to pin 2, the B phase of the left encoder to pin 4, the A phase of the right encoder to pin 5 and the B phase of the right encoder to pin 3 to get a postive speed reading from both encoders when the robot is moving forwards.
 
 As stated before, the deltaT defines how frequently we read the speed.
 
-The ticks per revolution caused some headscratching at first. At first I thought this was just the amount of pulses per revolution, so 1140. This is not the case however since we're using an interrupt which detect the change in voltage of the pin. Since a pulse is a rising edge and a falling edge, there are two changes per pulse, meaning we need to enter 2280 to get a correct speed reading.
+The ticks per revolution caused some headscratching. At first I thought this was just the amount of pulses per revolution, so 1140. This is not the case however because we're using an interrupt which detects a change in voltage of the pin. Since a pulse has a rising edge and a falling edge, there are two changes per pulse, meaning we need to enter 2280 to get a correct speed reading.
 
 ```cpp
 int Lspeed;
