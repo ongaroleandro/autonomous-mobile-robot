@@ -26,7 +26,9 @@ The purpose of this github page is to document my progress throughout the projec
 * [Navigation stack](#navigation-stack)
   * [Calculating the pose from odometry](#calculating-the-pose-from-odometry)  
     * [First iteration of python code](#first-iteration-of-python-code)  
-    * [Second iteration of python code](#second-iteration-of-python-code) 
+    * [Second iteration of python code](#second-iteration-of-python-code)
+  * [Calculating the twist from odometry](#calculating-the-twist-from-odometry)
+  * [Publishing odometry information](#publishing-odometry-information) 
 
 # Introduction
 This project came about because of the COVID-19 pandemic. In normal times I would have had the opportunity to work with the turtlebot3 for one of the courses I am enrolled in.
@@ -360,3 +362,95 @@ Finally we append the x-position, y-position, θ and the time to our list x_y_th
 
 ### Second iteration of python code
 After looking at the previous code some more I realised that when our robot is fuly working, we wouldn't need to keep track of all the positions our robot has been. So I decided to rewrite the previous code a little bit. I also decided to use a numpy array instead of a list for reasons I do not know. For now I have only implented this is in the python file I used for testing. See `proof of concept phase/testing-odometry-calculation.py`
+
+## Calculating the twist from odometry
+TODO
+
+## Publishing odometry information
+Publishing the pose and twist as well as the necessary transforms is fairly straightforward using this [tutorial](http://wiki.ros.org/navigation/Tutorials/RobotSetup/Odom#Using_tf_to_Publish_an_Odometry_transform) from the ROS wiki. This tutorial gives us the code written in C++, so we'll need to convert it to Python code.
+
+Line 9 in the code of the code in the tutorial tells us that need to create a publisher object, here  named `odom_pub`, which publishes a `nav_msgs/Odometry` message on the topic called `odom`. 
+Line 10 tells us that we also need a transform broadcaster.
+
+How to create a publisher node in Python can be found [here](http://wiki.ros.org/ROS/Tutorials/WritingPublisherSubscriber%28python%29) and how to create a transform broadcaster can be found [here](http://wiki.ros.org/tf2/Tutorials/Writing%20a%20tf2%20broadcaster%20%28Python%29). 
+
+The code explained (full code can be found in `proof of concept phase/odometry_handler.py`):
+```python
+    import tf2_ros
+    import tf_conversions
+    import geometry_msgs.msg
+    from nav_msgs.msg import Odometry
+```
+
+We need some additional modules for our code. 
+  - `tf2_ros` is needed to create the transform broadcaster
+  - `tf_conversions` is needed to convert our orientation from a pitch, yaw, roll reprensation to a quaternion representation.
+  - The `geometry_msgs.msg` module contains the TranformStamped class which is used by the broadcaster.
+  - The odometry class is located in the `nav_msgs.msg` module.
+
+As stated before, the pose and twist calculation is not done on the arduino itself. The transform broadcast and the `odom` message needs to be published where we do this calculation which is in the message callback fucntion `calc_pos()` of the subscriber node. So the rest of the code is inside this function. 
+```python
+    current_time = rospy.Time.now()
+```
+Both the transform broadcast and the odom message need to contain the time. Creating a variable with the current time will ensure that they both have the exact (i.e. to the nanosecond) time.
+
+```python
+    odom_broadcaster = tf2_ros.TransformBroadcaster()
+    odom_trans = geometry_msgs.msg.TransformStamped()
+```
+Here we create the transform broadcaster object and the transform stamped object. The transform stamped object is just the message which gets sent by the transform broadcaster.
+
+```python
+    odom_trans.header.stamp = current_time
+    odom_trans.header.frame_id = "odom"
+    odom_trans.child_frame_id = "base_link"
+    odom_trans.transform.translation.x = x
+    odom_trans.transform.translation.y = y
+    odom_trans.transform.translation.z = 0.0
+    q = tf_conversions.transformations.quaternion_from_euler(0, 0, theta*np.pi/180)
+    odom_trans.transform.rotation.x = q[0]
+    odom_trans.transform.rotation.y = q[1]
+    odom_trans.transform.rotation.z = q[2]
+    odom_trans.transform.rotation.w = q[3]
+```
+We then populate the transform stamped object with the necessary data. The [geometry_msgs API](http://docs.ros.org/en/kinetic/api/geometry_msgs/html/msg/TransformStamped.html) specifies what we need to fill in.
+
+```python
+    odom_broadcaster.sendTransform(odom_trans)
+```
+After that we can publish the message using the transform broadcaster.
+
+```python
+    odom_pub = rospy.Publisher('odom', Odometry, queue_size=50)
+    odom = Odometry()
+```
+Next we create the publisher object and the odometry object. Again, the odometry object is just the message which will get sent by the publisher.
+
+```python
+    odom.header.stamp = current_time
+    odom.header.frame_id = "odom"
+
+    odom.pose.pose.position.x = x
+    odom.pose.pose.position.y = y
+    odom.pose.pose.position.z = 0.0
+    odom.pose.pose.orientation.x = q[0]
+    odom.pose.pose.orientation.y = q[1]
+    odom.pose.pose.orientation.z = q[2]
+    odom.pose.pose.orientation.w = q[3]
+
+    odom.child_frame_id = "base_link"
+    odom.twist.twist.linear.x = 0 #todo: calculate vx, vy and vth from wl and wr
+    odom.twist.twist.linear.y = 0
+    odom.twist.twist.linear.z = 0
+```
+Here we populate the odometry object with the necessary data. As stated in the beginning, the [nav_msgs API](http://docs.ros.org/en/noetic/api/nav_msgs/html/msg/Odometry.html) gives us the details.
+
+```python
+    odom_pub.publish(odom)
+    #rate = rospy.Rate(10)
+    #rate.sleep()
+```
+Lastly, we also publish the odom message.
+
+*Note: I still need to write the code to calculate the twist part of this message, hence the linear x, y and z are set to zero for now.
+Note2 : I wanted to publish the `odom` message at 10 Hz using the rospy.Rate() function. My implementation of this, see the commented out code, does not work (or at least not optimally) and I still need to figure out why.*
