@@ -41,10 +41,10 @@ def calc_pos(msg):
     odom_trans.transform.translation.x = x
     odom_trans.transform.translation.y = y
     odom_trans.transform.translation.z = 0.0
-    q = tf_conversions.transformations.quaternion_from_euler(0, 0, theta)
+    q = tf_conversions.transformations.quaternion_from_euler(0, 0, theta*np.pi/180)
     odom_trans.transform.rotation.x = q[0]
-    odom_trans.transform.rotation.x = q[1]
-    odom_trans.transform.rotation.y = q[2]
+    odom_trans.transform.rotation.y = q[1]
+    odom_trans.transform.rotation.z = q[2]
     odom_trans.transform.rotation.w = q[3]
 
     odom_broadcaster.sendTransform(odom_trans)
@@ -58,6 +58,10 @@ def calc_pos(msg):
     odom.pose.pose.position.x = x
     odom.pose.pose.position.y = y
     odom.pose.pose.position.z = 0.0
+    odom.pose.pose.orientation.x = q[0]
+    odom.pose.pose.orientation.y = q[1]
+    odom.pose.pose.orientation.z = q[2]
+    odom.pose.pose.orientation.w = q[3]
 
     odom.child_frame_id = "base_link"
     odom.twist.twist.linear.x = 0 #todo: calculate vx, vy and vth from wl and wr
@@ -65,8 +69,8 @@ def calc_pos(msg):
     odom.twist.twist.linear.z = 0
     
     odom_pub.publish(odom)
-    rate = rospy.Rate(1)
-    rate.sleep()
+    #rate = rospy.Rate(50)
+    #rate.sleep()
 
 
 def write_to_csv():
