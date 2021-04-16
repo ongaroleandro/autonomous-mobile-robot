@@ -31,7 +31,7 @@ The purpose of this github page is to document my progress throughout the projec
 # Introduction
 This project came about because of the COVID-19 pandemic. In normal times I would have had the opportunity to work with the turtlebot3 for one of the courses I am enrolled in.
 
-Since we were not allowed to have hands-on exercise sessions and sending every student a turtlebot3 was not possible, the exercise sessions mainly consisted of completing partially written code in Python. I should note however that the goal of the exercise session was not to learn how to write code for a robot, but to have a firmer grasp on the concepts from the lectures (e.g. the kallman filter and different path planning algorithms). 
+Since we were not allowed to have hands-on exercise sessions and sending every student a turtlebot3 was not possible, the exercise sessions mainly consisted of completing partially written code in Python. I should note however that the goal of the exercise session was not to learn how to write code for a robot, but to have a firmer grasp on the concepts from the lectures (e.g. the Kalman filter and different path planning algorithms). 
 
 While the exercise sessions succeeded in this area, I was still itching to learn how to write code for a robot and to see this code in action. Throughout the semester I started my research on what was needed to make a turtlebot3-like robot and devised a sort of action plan. After my exams I finally started this project.
 
@@ -43,9 +43,12 @@ Tasks:
 - [x] Testing the code for controlling the motors.
 - [x] Writing code to read encoder data.
 - [x] Testing reading encoder data code.
-- [x] Writing code to calculate odometry from the encoder data
-- [ ] Writing code to publish the encoder data in a `nav_msgs/Odometry` message format.
-- [ ] Testing `nav_msgs/Odometry` message code
+- [x] Writing code to calculate pose from the encoder data
+- [x] Writing code to publish the pose and twist in a `nav_msgs/Odometry` message format.
+- [x] Testing publishing of `nav_msgs/Odometry` message code
+- [ ] Write code to calculate twist frrom encoder data
+- [ ] Figure out how to integrate rospy.Rate() into odometry publisher (= odometry_handler.py). 
+- [ ] Create static transform between base_link and base_laser (base_laser will be camera_link from freenect).
 - [ ] Configure RTABMAP ROS
 - [ ] Testrun
 
