@@ -29,6 +29,23 @@ def calc_pos(msg):
     
     x_y_theta_t.append([x, y, theta, t_ard])
 
+    #twist calculation
+    if (wl > 0 and wr > 0):
+        if (wl > wr):
+            vx = wr*r_wheel
+        else:
+            vx = wl*r_wheel
+        vth = -r_wheel*(wl-wr)/(0.5*wheel_sep)
+    elif (wl < 0 and wr < 0):
+        if (wl < wr):
+            vx = wl*r_wheel
+        else:
+            vx = wl*r_wheel
+        vth = -r_wheel*(wl-wr)/(0.5*wheel_sep)
+    else:
+        vx = 0
+        vth = r_wheel*wr/(0.5*wheel_sep)
+
     current_time = rospy.Time.now()
 
     #creating the tf-broadcaster and populating it with data
@@ -64,9 +81,12 @@ def calc_pos(msg):
     odom.pose.pose.orientation.w = q[3]
 
     odom.child_frame_id = "base_link"
-    odom.twist.twist.linear.x = 0 #todo: calculate vx, vy and vth from wl and wr
+    odom.twist.twist.linear.x = vx
     odom.twist.twist.linear.y = 0
     odom.twist.twist.linear.z = 0
+    odom.twist.twist.angular.x = 0
+    odom.twist.twist.angular.y = 0
+    odom.twist.twist.angular.z = vth
     
     odom_pub.publish(odom)
     #rate = rospy.Rate(50)
