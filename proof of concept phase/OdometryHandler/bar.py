@@ -10,10 +10,14 @@ import tf2_ros
 
 class Publisher(object):
 
-	def __init__(self, frame_id, child_frame_id):
+	def __init__(self, topic_name, frame_id, child_frame_id):
 
 		self.frame_id = frame_id
 		self.child_frame_id = child_frame_id
+
+		self.topic_name = topic_name
+		self.odom_pub = rospy.Publisher(self.topic_name, Odometry, queue_size=1)
+		self.odom_broadcaster = tf2_ros.TransformBroadcaster()
 
 	def getCurrentTime(self):
 		return rospy.Time.now()
@@ -62,6 +66,12 @@ class Publisher(object):
 		odom.twist.twist.angular.z = vx_vth[1]
 
 		return odom
+
+	def publishMessage(self, odom, odom_trans):
+		self.odom_broadcaster.sendTransform(odom_trans)
+		self.odom_pub.publish(odom)
+
+
 
 #pub = Publisher("odom", "base_link")
 #print(pub.createNavMsg(10, [1,1,0,10], [1,5]))

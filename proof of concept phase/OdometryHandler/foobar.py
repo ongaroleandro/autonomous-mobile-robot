@@ -15,8 +15,8 @@ from bar import Publisher
 class OdometryHandler(object):
 
 	def __init__(self):
-		self.arduino_data_processor = DataProcessor(0.025, 0.210)
-		self.pub = Publisher("odom", "base_link")
+		self.arduino_data_processor = DataProcessor("arduino_data", 0.025, 0.210)
+		self.pub = Publisher('odom', "odom", "base_link")
 
 	def simulate(self,sim_data):
 		for data in sim_data:
@@ -31,7 +31,29 @@ class OdometryHandler(object):
 			plt.plot(msg.pose.pose.position.x, msg.pose.pose.position.y, 'b.')
 			#print(self.pub.createNavMsg(1200, x_y_theta_t, vx_vth))
 
+	def main(self):
+		current_time = self.pub.getCurrentTime()
+		
+		x_y_theta_t, vx_vth = self.arduino_data_processor.getPublisherInfo()
+		self.pub.publishMessage(self.pub.createNavMsg(current_time, x_y_theta_t, vx_vth), self.pub.createTF(current_time, x_y_theta_t))
 
+
+def startNode():
+
+	rospy.init_node('odometry_handler', anonymous = False) #initialise node
+	odomhandler = OdometryHandler() #create odometryhandler object
+        #start while loop
+        while not rospy.is_shutdown():
+            rate = rospy.Rate(1) #adjust publishing rate here
+            odomhandler.main()
+            rate.sleep()
+        rospy.spin() #stop node
+
+
+if __name__ == "__main__":
+	startNode()
+
+'''
 r_wheel = 0.025
 wheel_sep = 0.210
 
@@ -51,10 +73,25 @@ sim_vel = [[10, 10, 1],
            [10, 10, 14]]
 
 
+def giveData():
+	wl = 5
+	wr = 10
+
+	simulated_data = []
+	delta_t = 0.1
+	i = 0
+	while i < 10:
+		simulated_data.append([wl, wr, i])
+		i += delta_t
+
+	return simulated_data
+
+
 fig = plt.figure()
 odomhandler = OdometryHandler()
-odomhandler.simulate(sim_vel)
+odomhandler.simulate(giveData())
 plt.show()
 
 
 #print(odomhandler.arduino_data_processor.x_y_theta_t)
+'''

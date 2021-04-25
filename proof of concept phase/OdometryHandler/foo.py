@@ -10,23 +10,43 @@ import tf2_ros
 
 class DataProcessor(object):
 
-	def __init__(self, r_wheel, wheel_sep):
+	def __init__(self, topic_name, r_wheel, wheel_sep):
+
+		self.topic_name = topic_name
 
 		self.r_wheel = r_wheel
 		self.wheel_sep = wheel_sep
 		self.x_y_theta_t = np.array([0, 0, 0, 0])
 		self.vx_vth = [0,0]
 
+		self._createSubscriber()
+
+	def _createSubscriber(self):
+	    #wait for message at initialisation before processing data	
+            self.arduino_data = None
+            while self.arduino_data is None and not rospy.is_shutdown():
+                try:
+                    self.arduino_data = rospy.wait_for_message(self.topic_name, Float32MultiArray, timeout=1.0) #define how long we want to wait for a message
+                except:
+                    rospy.logerr("error in foo") #print error screen after waiting and not receiving a message
+            self.processData(self.arduino_data) #calculate twist and pose from odometry information
+            self.sub = rospy.Subscriber(self.topic_name, Float32MultiArray, self.processData)
+
+	def processData(self, msg):
+		wl, wr, t_ard = self.extractData(msg)
+		self.calcPoseTwist(wl, wr, t_ard)
+
 	def extractData(self, msg):
 
-		wl = msg[0]
-		wr = msg[1]
-		t_ard = msg[2]
+            #TODO: convert msg.data from deg/sec to rad/sec
+                wl = msg.data[0]
+		wr = msg.data[1]
+		t_ard = msg.data[2]
 
 		return wl, wr, t_ard
 	
 	def calcPoseTwist(self, wl, wr, t_ard):
-		
+            #TODO: implement if statement for initial pose calculation
 		#if (len(self.x_y_theta_t) == 1):
 		#	self.x_y_theta_t.append([0, 0, 0, t_ard])
 
@@ -56,7 +76,6 @@ class DataProcessor(object):
 		else:
 			self.vx_vth[0] = 0
 			self.vx_vth[1] = self.r_wheel * wr / (0.5 * self.wheel_sep)
-
 
 
 		return True
