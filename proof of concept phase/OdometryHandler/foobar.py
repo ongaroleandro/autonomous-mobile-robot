@@ -35,7 +35,8 @@ class OdometryHandler(object):
 		current_time = self.pub.getCurrentTime()
 		
 		x_y_theta_t, vx_vth = self.arduino_data_processor.getPublisherInfo()
-		self.pub.publishMessage(self.pub.createNavMsg(current_time, x_y_theta_t, vx_vth), self.pub.createTF(current_time, x_y_theta_t))
+		if self.arduino_data_processor.arduino_data is not None:
+			self.pub.publishMessage(self.pub.createNavMsg(current_time, x_y_theta_t, vx_vth), self.pub.createTF(current_time, x_y_theta_t))
 
 
 def startNode():
@@ -44,7 +45,7 @@ def startNode():
 	odomhandler = OdometryHandler() #create odometryhandler object
         #start while loop
         while not rospy.is_shutdown():
-            rate = rospy.Rate(1) #adjust publishing rate here
+            rate = rospy.Rate(10) #adjust publishing rate here
             odomhandler.main()
             rate.sleep()
         rospy.spin() #stop node

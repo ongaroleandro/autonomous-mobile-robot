@@ -19,6 +19,12 @@ class DataProcessor(object):
 		self.x_y_theta_t = np.array([0, 0, 0, 0])
 		self.vx_vth = [0,0]
 
+		#TODO: create data variable instead of wl, wr and t_ard
+		#	   not really necessary but would be nice to always store the data
+		#self.wl = 0
+		#self.wr = 0
+		#self.t_ard = 0
+
 		self._createSubscriber()
 
 	def _createSubscriber(self):
@@ -33,22 +39,20 @@ class DataProcessor(object):
             self.sub = rospy.Subscriber(self.topic_name, Float32MultiArray, self.processData)
 
 	def processData(self, msg):
-		wl, wr, t_ard = self.extractData(msg)
-		self.calcPoseTwist(wl, wr, t_ard)
+		self.wl, self.wr, self.t_ard = self.extractData(msg)
+		#self.calcPoseTwist(wl, wr, t_ard)
 
 	def extractData(self, msg):
 
-            #TODO: convert msg.data from deg/sec to rad/sec
-                wl = msg.data[0]
-		wr = msg.data[1]
+		wl = msg.data[0]*np.pi/180
+		wr = msg.data[1]*np.pi/180
 		t_ard = msg.data[2]
 
 		return wl, wr, t_ard
-	
+
 	def calcPoseTwist(self, wl, wr, t_ard):
-            #TODO: implement if statement for initial pose calculation
-		#if (len(self.x_y_theta_t) == 1):
-		#	self.x_y_theta_t.append([0, 0, 0, t_ard])
+		if ((self.x_y_theta_t == [0, 0, 0, 0]).all()):
+			self.x_y_theta_t = np.array([0, 0, 0, t_ard])
 
 		delta_theta = (- wl * self.r_wheel * (t_ard - self.x_y_theta_t[3]) + wr * self.r_wheel * (t_ard - self.x_y_theta_t[3])) / self.wheel_sep
 		delta_s = (wl * self.r_wheel * (t_ard - self.x_y_theta_t[3]) + wr * self.r_wheel * (t_ard - self.x_y_theta_t[3])) * 0.5
@@ -81,10 +85,12 @@ class DataProcessor(object):
 		return True
 	
 	def getBroadcasterInfo(self):
+		self.calcPoseTwist(self.wl, self.wr, self.t_ard)
 
 		return self.x_y_theta_t
 
 	def getPublisherInfo(self):
+		self.calcPoseTwist(self.wl, self.wr, self.t_ard)
 
 		return self.x_y_theta_t, self.vx_vth
 
