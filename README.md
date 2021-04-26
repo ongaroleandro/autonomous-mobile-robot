@@ -48,9 +48,14 @@ Tasks:
 - [x] Writing code to calculate pose from the encoder data
 - [x] Writing code to publish the pose and twist in a `nav_msgs/Odometry` message format.
 - [x] Testing publishing of `nav_msgs/Odometry` message code
-- [ ] Write code to calculate twist frrom encoder data
-- [ ] Figure out how to integrate rospy.Rate() into odometry publisher (= odometry_handler.py). 
-- [ ] Create static transform between base_link and base_laser (base_laser will be camera_link from freenect).
+- [x] Write code to calculate twist frrom encoder data
+- [x] Create static transform between base_link and base_laser (base_laser will be camera_link from freenect).
+- [ ] ~~Figure out how to integrate rospy.Rate() into odometry publisher (= odometry_handler.py).~~
+      --> needed to use classes to achieve this
+- [x] Write code for 'OdometryHandler' class
+- [x] Test code for 'OdometryHandler' class
+- [ ] let arduino continuously publish encoder data
+- [ ] See if we can run everything we need for gmapping 
 - [ ] Configure RTABMAP ROS
 - [ ] Testrun
 
