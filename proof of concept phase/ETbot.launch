@@ -1,6 +1,8 @@
 <launch>
-  <include file="$(find freenect_launch)/launch/examples/freenect-registered-xyzrgb.launch">
-  
+  <include file="$(find freenect_launch)/launch/examples/freenect-registered-xyzrgb.launch"> 
+  </include>
+
+  <include file="$(find testing)/src/gmapping.launch"> </include>
   <node pkg="rosserial_arduino" type="serial_node.py" name="serial_arduino" output="screen">
     <param name="port" value="/dev/ttyACM0" />
     <param name="baud" value="115200" />
