@@ -54,8 +54,8 @@ Tasks:
       --> needed to use classes to achieve this
 - [x] Write code for 'OdometryHandler' class
 - [x] Test code for 'OdometryHandler' class
-- [ ] let arduino continuously publish encoder data
-- [ ] See if we can run everything we need for gmapping 
+- [x] let arduino continuously publish encoder data
+- [x] See if we can run everything we need for gmapping 
 - [ ] Configure RTABMAP ROS
 - [ ] Testrun
 
