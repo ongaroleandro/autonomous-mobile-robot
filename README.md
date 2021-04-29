@@ -369,7 +369,25 @@ Finally we append the x-position, y-position, θ and the time to our list x_y_th
 After looking at the previous code some more I realised that when our robot is fuly working, we wouldn't need to keep track of all the positions our robot has been. So I decided to rewrite the previous code a little bit. I also decided to use a numpy array instead of a list for reasons I do not know. For now I have only implented this is in the python file I used for testing. See `proof of concept phase/testing-odometry-calculation.py`
 
 ## Calculating the twist from odometry
-TODO
+Apart from the pose we also need the twist of our robot. The twist is the linear velocity in the x-direction vx and the angular velocity in the z-direction vt. The twist is with respect to the base_link frame.
+
+```python
+    if (wl > 0 and wr > 0):
+        if (wl > wr):
+            vx = wr*r_wheel
+        else:
+            vx = wl*r_wheel
+        vth = -r_wheel*(wl-wr)/(0.5*wheel_sep)
+    elif (wl < 0 and wr < 0):
+        if (wl < wr):
+            vx = wl*r_wheel
+        else:
+            vx = wl*r_wheel
+        vth = -r_wheel*(wl-wr)/(0.5*wheel_sep)
+    else:
+        vx = 0
+        vth = r_wheel*wr/(0.5*wheel_sep)
+```
 
 ## Publishing odometry information
 Publishing the pose and twist as well as the necessary transforms is fairly straightforward using this [tutorial](http://wiki.ros.org/navigation/Tutorials/RobotSetup/Odom#Using_tf_to_Publish_an_Odometry_transform) from the ROS wiki. This tutorial gives us the code written in C++, so we'll need to convert it to Python code.
@@ -444,18 +462,19 @@ Next we create the publisher object and the odometry object. Again, the odometry
     odom.pose.pose.orientation.w = q[3]
 
     odom.child_frame_id = "base_link"
-    odom.twist.twist.linear.x = 0 #todo: calculate vx, vy and vth from wl and wr
+    odom.twist.twist.linear.x = vx
     odom.twist.twist.linear.y = 0
     odom.twist.twist.linear.z = 0
+    odom.twist.twist.angular.x = 0
+    odom.twist.twist.angular.y = 0
+    odom.twist.twist.angular.z = vth
 ```
 Here we populate the odometry object with the necessary data. As stated in the beginning, the [nav_msgs API](http://docs.ros.org/en/noetic/api/nav_msgs/html/msg/Odometry.html) gives us the details.
 
 ```python
     odom_pub.publish(odom)
-    #rate = rospy.Rate(10)
-    #rate.sleep()
 ```
 Lastly, we also publish the odom message.
 
-*Note: I still need to write the code to calculate the twist part of this message, hence the linear x, y and z are set to zero for now.
-Note2 : I wanted to publish the `odom` message at 10 Hz using the rospy.Rate() function. My implementation of this, see the commented out code, does not work (or at least not optimally) and I still need to figure out why.*
+Each time we receive a message on the `/arduino_data` topic, we publish a `nav_msgs/Odometry` message on the `/odom` topic. The problem with this implementation is that we cannot control the publishing rate of the `/odom` topic. To solve this problem we will be using classes. Three classes to be precise; the `OdometryHandler`class which has our main function, the `DataProcessor` class which handles the incoming arduino data and the `Publisher` class for publishing messages on the `/odom` topic. See the wiki for more details.
+
