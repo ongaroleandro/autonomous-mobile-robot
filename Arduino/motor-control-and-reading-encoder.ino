@@ -51,10 +51,10 @@ geometry_msgs/Vector3 angular
 void messageCb( const geometry_msgs::Twist& msg){
   speed_ang = msg.angular.z;
   speed_lin = msg.linear.x;
-  w_r = ((speed_lin/wheel_rad) + ((speed_ang*wheel_sep)/(2.0*wheel_rad)))*30;
-  w_l = ((speed_lin/wheel_rad) - ((speed_ang*wheel_sep)/(2.0*wheel_rad)))*30;
-  dw_r = 255*w_r/1602;    //dw_r is w_r transformed into motor driver value
-  dw_l = 255*w_l/1602;
+  w_r = ((speed_lin/wheel_rad) + ((speed_ang*wheel_sep)/(2.0*wheel_rad)));
+  w_l = ((speed_lin/wheel_rad) - ((speed_ang*wheel_sep)/(2.0*wheel_rad)));
+  dw_r = 33.55*w_r;    //dw_r is w_r transformed into motor driver value
+  dw_l = 33.55*w_l;
 }
 
 ros::Subscriber<geometry_msgs::Twist> sub("cmd_vel", &messageCb ); //rosserial, subscibe to topic cmd_vel (this is the Twist msg i.e. vector3 linear and vector3 angular) and execute messageCb when a message from the topic is received
@@ -93,12 +93,10 @@ void loop(){
  double nsec = nh.now().nsec / 100000;
  double nsec2 = nsec / 10000;
  
- if(Lspeed || Rspeed) {
-  array_msg.data[0] = Lspeed;
-  array_msg.data[1] = Rspeed;
-  array_msg.data[2] = sec + nsec2;
-  pub.publish(&array_msg); //publish message
- }
+ array_msg.data[0] = Lspeed;
+ array_msg.data[1] = Rspeed;
+ array_msg.data[2] = sec + nsec2;
+ pub.publish(&array_msg); //publish message
  
  nh.spinOnce();
 }
