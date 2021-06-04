@@ -18,6 +18,7 @@ class DataProcessor(object):
 		self.wheel_sep = wheel_sep
 		self.x_y_theta_t = np.array([0, 0, 0, 0])
 		self.vx_vth = [0,0]
+                self.collected_data = []
 
 		#TODO: create data variable instead of wl, wr and t_ard
 		#	   not really necessary but would be nice to always store the data
@@ -91,8 +92,14 @@ class DataProcessor(object):
 
 	def getPublisherInfo(self):
 		self.calcPoseTwist(self.wl, self.wr, self.t_ard)
+                self.collected_data.append([self.wl, self.wr, rospy.Time.now().to_sec()])
 
 		return self.x_y_theta_t, self.vx_vth
+
+	def setXYTHETA(self):
+		self.x_y_theta_t[0] = 0
+		self.x_y_theta_t[1] = 0
+		self.x_y_theta_t[2] = 0
 
 
 #arduinoDP = DataProcessor(0.025, 0.210)
