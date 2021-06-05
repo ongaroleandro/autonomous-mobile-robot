@@ -94,6 +94,8 @@ A render of the robot can be seen below. The technical drawings can be found in 
 
 and this is what it currently looks like in real life:
 
+![mobile robot IRL](media/mobile_robot_v2.JPG.jpg)
+
 It's not the prettiest of things, but it works for now. I will tidy up the wiring at a later time and maybe I'll also lasercut the mdf plates instead of using the ones I cut myself.
 
 
@@ -381,31 +383,32 @@ Aside from the array `x_y_theta_t`, which gets initialised when a `DataProcessor
 ```python
 if (wl > 0 and wr > 0):
   if (wl > wr):
-				self.vx_vth[0] = wr * self.r_wheel
-		else:
-				self.vx_vth[0] = wl * self.r_wheel
-		self.vx_vth[1] = -self.r_wheel * (wl - wr) / (0.5 * self.wheel_sep)
+    self.vx_vth[0] = wr * self.r_wheel
+  else:
+    self.vx_vth[0] = wl * self.r_wheel
+  self.vx_vth[1] = -self.r_wheel * (wl - wr) / (0.5 * self.wheel_sep)
 elif (wl < 0 and wr < 0):
-		if (wl < wr):
-		  self.vx_vth[0] = wr*self.r_wheel
-		else:
-		  self.vx_vth[0] = wl*self.r_wheel
-		self.vx_vth[1] = -self.r_wheel * (wl - wr) / (0.5 * self.wheel_sep)
+  if (wl < wr):
+    self.vx_vth[0] = wr*self.r_wheel
+  else:
+    self.vx_vth[0] = wl*self.r_wheel
+  self.vx_vth[1] = -self.r_wheel * (wl - wr) / (0.5 * self.wheel_sep)
 else:
   self.vx_vth[0] = 0
-	 self.vx_vth[1] = self.r_wheel * wr / (0.5 * self.wheel_sep)
+  self.vx_vth[1] = self.r_wheel * wr / (0.5 * self.wheel_sep)
 ```
 Our robot is either going forwards, going backward or rotating in place. The if statement is to calculate the linear and angular velocity when it is going forwards. The elif statement is for when it is going backwards and the else statement is for when it is rotating in place.
 
 ```python
-        if (wl > wr):
-            vx = wr*r_wheel
-        else:
-            vx = wl*r_wheel
+if (wl > wr):
+  self.vx_vth[0] = wr * self.r_wheel
+else:
+  self.vx_vth[0] = wl * self.r_wheel
+self.vx_vth[1] = -self.r_wheel * (wl - wr) / (0.5 * self.wheel_sep)
 ```
 Inside the if statement we check if the left wheel is rotating faster than the right wheel. If it is, our linear velocity is determined by the speed of the right wheel. The reason for this can be explained by looking at the velocity vectors in this situation:
 
-PICTURE OF VECTORS
+![velocity vectors](media/velocity_vectors.JPG.jpg)
 
 Here we can also see that when the left wheel is moving faster, it will make our robot rotate in the clockwise direction about the z-axis. This is, according to the convention used and as seen in the upper lefthand corner, a negative rotation about the z-axis.
 
