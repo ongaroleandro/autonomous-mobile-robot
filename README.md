@@ -25,8 +25,7 @@ The purpose of this github page is to document my progress throughout the projec
   * [Arduino code for reading motor encoders](#arduino-code-for-reading-motor-encoders)
 * [Navigation stack](#navigation-stack)
   * [Calculating the pose from odometry](#calculating-the-pose-from-odometry)  
-    * [First iteration of python code](#first-iteration-of-python-code)  
-    * [Second iteration of python code](#second-iteration-of-python-code)
+    * [Python code snippet](#python-code-snippet)  
   * [Calculating the twist from odometry](#calculating-the-twist-from-odometry)
   * [Publishing odometry information](#publishing-odometry-information) 
 
@@ -72,7 +71,7 @@ Tasks:
  - Raspberry Pi 3B+ (from now on referred to as RPI)
  - Arduino Uno Rev3
  - Microsoft xbox 360 Kinect (model 1414) + power adapter
- - Cytron MDD10A DC motor driver
+ - Cytron MDD10A DC motor drive
  - Pololu 380:1 micro metal gearmotor HPCB 12V with extended motor shaft
  - Pololu 12CPR magnetic encoder kit
  - Pololu 1/2" metal ball caster
@@ -87,6 +86,26 @@ Tasks:
  - 3mm and 6mm mdf plates
 
 # Robot design
+The design was inspired by the turtlebot3 burger. The robot has three layers. The first layer (on the bottom) is for the two motors with encoders, the battery pack for the motors and the motor drive. The second, middle, layer is for the raspberry pi, the arduino and the battery pack for the arduino as well as for the kinect. The third layer is for the kinect camera itself.
+
+A render of the robot can be seen below. The technical drawings can be found in the `CAD files and technical drawings` folder.
+
+![mobile robot render](media/mobile%20robot%20render.JPG)
+
+and this is what it currently looks like in real life:
+
+It's not the prettiest of things, but it works for now. I will tidy up the wiring at a later time and maybe I'll also lasercut the mdf plates instead of using the ones I cut myself.
+
+
+*sources:*
+ - *[Arduino](https://grabcad.com/library/arduino-uno-r3-1)*
+ - *[Raspberry PI](https://grabcad.com/library/raspberry-pi-3-b-1)*
+ - *[Motor](https://www.pololu.com/product/4799/resources)*
+ - *[Encoder](https://www.pololu.com/product/4760/resources)*
+ - *[Kinect](https://grabcad.com/library/kinect-xbox-360)*
+ - *[Motor drive](https://www.cytron.io/p-10amp-5v-30v-dc-motor-driver-2-channels)*
+ - *[Metal ball caster](https://www.pololu.com/product/953/resources)*
+
 # Setting up ROS melodic
 ## ROS on RPI
 Installing ROS melodic is pretty easy if you follow the [wiki](http://wiki.ros.org/melodic/Installation/Ubuntu). The first step, configuring the Ubuntu repositories, can be done on a headless setup by editing the sources.list file. See the [Ubuntu documentation](https://help.ubuntu.com/community/Repositories/Ubuntu) for more information. Also, installing the ROS-Base version will suffice.
@@ -178,7 +197,7 @@ We can test if rosserial is working by using the [Hello World example](http://wi
 The ros topic `/cmd_vel` will receive commands from RTABMAP in the form of `geometry_msgs/Twist` messages. Looking at the [API](http://docs.ros.org/en/jade/api/geometry_msgs/html/msg/Twist.html) we can see that this message consists of two vectors; one for linear velocities and one for angular velocities.
 Since our robot can only move in a 2D plane we're only interested in the x and y component of the linear velocity vector and in the z component of the angular velocity vector.
 ## Arduino code for controlling the motors
-See the full code in PATH_TO_CODE. The gist of it is that we subscribe to the `/cmd_vel` topic, convert the `geometry_msgs/Twist` message into a motor speed and then convert this motor speed into a command for our motor driver.
+See the full code in PATH_TO_CODE. The gist of it is that we subscribe to the `/cmd_vel` topic, convert the `geometry_msgs/Twist` message into a motor speed and then convert this motor speed into a command for our motor drive.
 ## Testing Arduino code
 We'll use [teleop_twist_keyboard](http://wiki.ros.org/teleop_twist_keyboard), which converts key presses into `geometry_msgs/Twist` messages which then get published to the `/cmd_vel` topic.
 Install with:
@@ -287,114 +306,108 @@ We also want to publish at a rate of 10Hz while our arduino sends the encoder da
 
 We will make three classes; a `DataProcessor` class which subscribes to our arduino data, a `Publisher` class which publishes messages on the `odom` topic and finally a `OdometryHandler` class which will be used to bring the previous two classes together. Below you can see the UML class diagram.
 
+*NOTE: using classes is not really necessary to publish odometry, you can publish the odometry in the message callback upon receiving the arduino data. The problem with this however is that you'll be continuously calculating the pose from the received arduino and thus wasting CPU power. Doing it this way is easier for testing though and that why I did it like this the first time. You can find the code in `PATH`. More information on that code can be found in the [wiki](https://github.com/ongaroleandro/autonomous-mobile-robot/wiki/Publishing-odometry-without-using-classes).*
+
 ![UML_diagram](https://mermaid.ink/img/eyJjb2RlIjoiY2xhc3NEaWFncmFtXG4gICAgT2RvbWV0cnlIYW5kbGVyIDx8LS0gRGF0YVByb2Nlc3NvclxuICAgIE9kb21ldHJ5SGFuZGxlciA8fC0tIFB1Ymxpc2hlclxuICAgIE9kb21ldHJ5SGFuZGxlciA6ICtEYXRhUHJvY2Vzc29yIGFyZHVpbm9fZGF0YV9wcm9jZXNzb3JcbiAgICBPZG9tZXRyeUhhbmRsZXIgOiArUHVibGlzaGVyIHB1YlxuICAgIE9kb21ldHJ5SGFuZGxlcjogK21haW4oKVxuXG4gICAgY2xhc3MgRGF0YVByb2Nlc3NvcntcbiAgICAgICsgdG9waWNfbmFtZSA6IFN0cmluZ1xuICAgICAgKyBzdWIgOiByb3NweVN1YnNjcmliZXJcbiAgICAgICsgcl93aGVlbCA6IGZsb2F0XG4gICAgICArIHdoZWVsX3NlcCA6IGZsb2F0XG4gICAgICArIHhfeV90aGV0YV90IDogYXJyYXlcbiAgICArIHZ4X3Z0aCA6IGFycmF5XG4gICAgKyBhcmR1aW5vX2RhdGEgOiBhcnJheVxuICAgICsgd2wgOiBmbG9hdFxuICAgICsgd3IgOiBmbG9hdFxuICAgICsgdF9hcmQgOiBmbG9hdFxuICAgICsgX19pbml0X18odG9waWNfbmFtZSwgcl93aGVlbCwgd2hlZWxfc2VwKVxuICAgICsgX2NyZWF0ZVN1YnNjcmliZXIoKVxuICAgICsgcHJvY2Vzc0RhdGEobXNnKVxuICAgICsgZXh0cmFjdERhdGEobXNnKVxuICAgICsgY2FsY1Bvc2VUd2lzdCh3bCwgd3IsIHRfYXJkKVxuICAgICsgZ2V0QnJvYWRjYXN0ZXJJbmZvKClcbiAgICArIGdldFB1Ymxpc2hlckluZm8oKVxuXG4gICAgfVxuICAgIGNsYXNzIFB1Ymxpc2hlcntcbiAgICArIHRvcGljX25hbWUgOiBTdHJpbmdcbiAgICAgICsgZnJhbWVfaWQgOiBTdHJpbmdcbiAgICArIGNoaWxkX2ZyYW1lX2lkIDogU3RyaW5nXG4gICAgKyBvZG9tX3B1YiA6IHJvc3B5UHVibGlzaGVyXG4gICAgKyBvZG9tX2Jyb2FkY2FzdGVyIDogcm9zcHlCcm9hZGNhc3RlclxuICAgIC0gX19pbml0X18odG9waWNfbmFtZSwgZnJhbWVfaWQsIGNoaWxkX2ZyYW1lX2lkKVxuICAgICsgZ2V0Q3VycmVudFRpbWUoKVxuICAgICsgY3JlYXRlVEYoY3VycmVudF90aW1lLCB4X3lfdGhldGFfdClcbiAgICArIGNyZWF0ZU5hdk1zZyhjdXJyZW50X3RpbWUsIHhfeV90aGV0YV90LCB2eF92dGgpXG4gICAgKyBwdWJsaXNoTWVzc2FnZShvZG9tLCBvZG9tX3RyYW5zKVxuICAgIH1cbiAgICAgICAgICAgICIsIm1lcm1haWQiOnsidGhlbWUiOiJkZWZhdWx0In0sInVwZGF0ZUVkaXRvciI6ZmFsc2UsImF1dG9TeW5jIjp0cnVlLCJ1cGRhdGVEaWFncmFtIjpmYWxzZX0)
 
-The code for the different classes can be found in `ROS/src/odometry/src`. In the next paragraph I will explain how we can calculate the pose of our robot from the odometry data. 
+The code for the different classes can be found in `ROS/src/odometry/src`. More details on how these classes work can be found in the section `NAME`. In the next paragraph I will explain how we can calculate the pose of our robot from the odometry data.
 
 ## Calculating the pose from odometry
-
-The calculation of the pose will be done in the `DataProcessor` class.
-
-The [pose](http://docs.ros.org/en/noetic/api/geometry_msgs/html/msg/Pose.html) contains our position and orientation in free space. Our robot is restricted to a single plane, the XY plane, so the pose of our robot is the x- and y-postion and the angle with respect to the x-axis.
+The [pose](http://docs.ros.org/en/noetic/api/geometry_msgs/html/msg/Pose.html) contains our position and orientation in free space. Our robot is restricted to a single plane, the XY plane, so the pose of our robot is the x- and y-position with respect to the origin and the angle with respect to the x-axis.
 
 The kinematics of a 2 wheel differential drive robot are well known. [This](https://www.hmc.edu/lair/ARW/ARW-Lecture01-Odometry.pdf) lecture by Chris Clark gives us the equations we need and also explains the derivation of them step by step. 
 The equations are:
 
 ![pose equations](media/pose%20equations.png)
 
-### First iteration of python code
-*The idea for this code was to calculate the pose of our robot but I also wanted to keep a list with all locations our robot has been. This list will then be written to a csv file when this node is closed so I could look at the data afterwards.*
+### Python code snippet
+The calculation of the pose will be done in the `DataProcessor` class. A numpy array is created when a `DataProcessor` object is created. It is a 1x4 array called `x_y_theta_t`. This array stores the latest published x- and y- position and the angle θ as well as the time of publishing in seconds. More information on the time can be found in the section `reading motor encoder`.
+When the array is first created however, it is `[0, 0, 0, 0]` since we assumed our robot starts at the origin of the odom frame. 
 
-The equations translated into Python code (the full code can be found at `proof of concept phase/`):
+Two important variables get also created when we initialise the class, namely the radius of our wheels `r_wheel` and the distance between our wheel `wheel_sep`.
 
+With that as background knowledge it will be easier to understand the full code for doing the calculation:
 ```python
-x_y_theta_t = [[0, 0, 0, 0]]
-r_wheel = 0.025
-wheel_sep = 0.210
+def calcPoseTwist(self, wl, wr, t_ard):
+		if ((self.x_y_theta_t == [0, 0, 0, 0]).all()):
+			self.x_y_theta_t = np.array([0, 0, 0, t_ard])
 
-
-def calc_pos(msg):
-    if (len(x_y_theta_t) == 1):
-        x_y_theta_t.append([0, 0, 0, msg.data[2]])
-    wl = msg.data[0]*np.pi/180
-    wr = msg.data[1]*np.pi/180
-    t_ard = msg.data[2]
-   
-    delta_theta = (-wl * r_wheel * (t_ard - x_y_theta_t[-1][3]) + wr * r_wheel * (t_ard - x_y_theta_t[-1][3])) / wheel_sep
-    delta_s = (wl * r_wheel * (t_ard - x_y_theta_t[-1][3]) + wr * r_wheel * (t_ard - x_y_theta_t[-1][3])) * 0.5
-    x = x_y_theta_t[-1][0] + delta_s * np.cos(x_y_theta_t[-1][2]*np.pi/180 + delta_theta * 0.5)
-    y = x_y_theta_t[-1][1] + delta_s * np.sin(x_y_theta_t[-1][2]*np.pi/180 + delta_theta * 0.5)
-    theta = x_y_theta_t[-1][2] + delta_theta*180/np.pi #FIX ME: theta needs to stay between -359 and +359 degrees
-    
-    x_y_theta_t.append([x, y, theta, t_ard])
+		delta_theta = (- wl * self.r_wheel * (t_ard - self.x_y_theta_t[3]) + wr * self.r_wheel * (t_ard - self.x_y_theta_t[3])) / self.wheel_sep
+		delta_s = (wl * self.r_wheel * (t_ard - self.x_y_theta_t[3]) + wr * self.r_wheel * (t_ard - self.x_y_theta_t[3])) * 0.5
+		
+		x = self.x_y_theta_t[0] + delta_s * np.cos(self.x_y_theta_t[2] * np.pi / 180 + delta_theta * 0.5)		
+		y = self.x_y_theta_t[1] + delta_s * np.sin(self.x_y_theta_t[2] * np.pi / 180 + delta_theta * 0.5)
+		theta = self.x_y_theta_t[2] + delta_theta * 180 / np.pi  # FIX ME: theta needs to stay between -359 and +359 degrees
+		
+		self.x_y_theta_t = np.array([x, y, theta, t_ard])
 ```
 
-The original equation is given in terms of distance, while our encoders gives a speed. We can however easily convert a speed to a distance by multiplying our speed with a Δt.  Let's look at the code in more detail:
-```python
-x_y_theta_t = [[0, 0, 0, 0]]
-r_wheel = 0.025
-wheel_sep = 0.210
-```
-The list x_y_theta_t contains our x-position, y-position, angle w.r.t. x-axis and the time. Since we assumed our robot starts at the origin of the odom frame the first element in this list is `[0, 0, 0, 0]`. We then define the wheel radius `r_wheel` in meter because we need to multiply our angular velocity with the wheel radius to get our linear velocity. We also define the distance between the two wheels `wheel_sep`because they're needed for the calculations.
+The original equations are given in terms of distance, while our encoders give a speed. Luckily we can easily convert a speed to a distance by multiplying our speed with a Δt.  Let's look at the code in more detail:
 
 ```python
-def calc_pos(msg):
-    if (len(x_y_theta_t) == 1):
-        x_y_theta_t.append([0, 0, 0, msg.data[2]])
-    wl = msg.data[0]*np.pi/180
-    wr = msg.data[1]*np.pi/180
-    t_ard = msg.data[2]
+def calcPoseTwist(self, wl, wr, t_ard):
+  if ((self.x_y_theta_t == [0, 0, 0, 0]).all()):
+    self.x_y_theta_t = np.array([0, 0, 0, t_ard])
 ```
 
-Then we define our definition `calc_pos()` and assign the the contents of the topic we receive to their respective variables. The if statement is there because the time contained in the message we receive is not the seconds elapsed since starting the node. The time we receive is the current time in seconds by using `nh.now()`, see the section on reading the motor encoders for more details. Without the if statement the first Δt we calculate would be enormous and incorrect.
-
+The if statement is there because the time contained in the message we receive is not the seconds elapsed since starting the node. The time we receive is the current time in seconds by using `nh.now()`, see the section on reading the motor encoders for more details. Without the if statement the first Δt we calculate would be enormous and incorrect.
 
 ```python
-    delta_theta = (-wl * r_wheel * (t_ard - x_y_theta_t[-1][3]) + wr * r_wheel * (t_ard - x_y_theta_t[-1][3])) / wheel_sep
-    delta_s = (wl * r_wheel * (t_ard - x_y_theta_t[-1][3]) + wr * r_wheel * (t_ard - x_y_theta_t[-1][3])) * 0.5
+delta_theta = (- wl * self.r_wheel * (t_ard - self.x_y_theta_t[3]) + wr * self.r_wheel * (t_ard - self.x_y_theta_t[3])) / self.wheel_sep
+delta_s = (wl * self.r_wheel * (t_ard - self.x_y_theta_t[3]) + wr * self.r_wheel * (t_ard - self.x_y_theta_t[3])) * 0.5
 ```
-Here we calculate Δθ and Δs. As stated before, the distance traveled is our linear velocity multiplied with a Δt. Δt is our current time minus the previous time. Our current time is in the message and our previous time is in the list x_y_theta_t.  We get our previous time in the list by writing `x_y_theta_t[-1][3]` 
+Here we calculate Δθ and Δs. As stated before, the distance traveled is our linear velocity multiplied with a Δt. Δt is our current time minus the previous time. Our current time is in the message and our previous time is in the array x_y_theta_t. We get our previous time in the list by writing `x_y_theta_t[3]` 
 
 ```python
-    x = x_y_theta_t[-1][0] + delta_s * np.cos(x_y_theta_t[-1][2]*np.pi/180 + delta_theta * 0.5)
-    y = x_y_theta_t[-1][1] + delta_s * np.sin(x_y_theta_t[-1][2]*np.pi/180 + delta_theta * 0.5)
-    theta = x_y_theta_t[-1][2] + delta_theta*180/np.pi #FIX ME: theta needs to stay between -359 and +359 degrees
+x = self.x_y_theta_t[0] + delta_s * np.cos(self.x_y_theta_t[2] * np.pi / 180 + delta_theta * 0.5)		
+y = self.x_y_theta_t[1] + delta_s * np.sin(self.x_y_theta_t[2] * np.pi / 180 + delta_theta * 0.5)
+theta = self.x_y_theta_t[2] + delta_theta * 180 / np.pi  # FIX ME: theta needs to stay between -359 and +359 degrees
 ```
 Now that we have Δθ and Δs we can calculate , x, y and θ.
-`np.cos()` and `np.sin()` need the angle in radians. The Δθ we calculated earlier is in radians, but for easy reading we will store our angle θ in degrees in our list x_y_theta_t.  This means we need to convert the θ from our list to radians. 
+`np.cos()` and `np.sin()` need the angle in radians. The Δθ we calculated earlier is in radians, but for easy reading we will store our angle θ in degrees in our array x_y_theta_t.  This means we need to convert the θ from our array to radians. 
 *NOTE: we know the Δθ we calculated earlier is in radians because when looking at the derivation of the equations you can see that they used s=rθ to get the distance traveled, which is only valid for a θ in radians.*
 
 ```python
-    x_y_theta_t.append([x, y, theta, t_ard])
+self.x_y_theta_t = np.array([x, y, theta, t_ard])
 ```
 
-Finally we append the x-position, y-position, θ and the time to our list x_y_theta_t.
-
-*At the time of writing this code I do not have the encoders working, so to test this code I simulated the encoder messages as a list. The python file I used for testing can be found at `proof of concept phase/testing-odometry-calculation.py`*
-
-### Second iteration of python code
-After looking at the previous code some more I realised that when our robot is fuly working, we wouldn't need to keep track of all the positions our robot has been. So I decided to rewrite the previous code a little bit. I also decided to use a numpy array instead of a list for reasons I do not know. For now I have only implented this is in the python file I used for testing. See `proof of concept phase/testing-odometry-calculation.py`
+Finally we store the new x-position, y-position, θ and the time in our array x_y_theta_t.
 
 ## Calculating the twist from odometry
-Apart from the pose we also need the twist of our robot. The twist is the linear velocity in the x-direction vx and the angular velocity in the z-direction vt. The twist is with respect to the base_link frame.
+Apart from the pose we also need the twist of our robot. The twist is the linear velocity in the x-direction vx and the angular velocity in the z-direction vt. The twist is with respect to the base_link frame, i.e. the frame attached to our robot.
+
+Aside from the array `x_y_theta_t`, which gets initialised when a `DataProcessor` object is created, the array `vx_vth` also gets created. This array stores the latest linear and angular velocity which has been published.
 
 ```python
-    if (wl > 0 and wr > 0):
+if (wl > 0 and wr > 0):
+  if (wl > wr):
+				self.vx_vth[0] = wr * self.r_wheel
+		else:
+				self.vx_vth[0] = wl * self.r_wheel
+		self.vx_vth[1] = -self.r_wheel * (wl - wr) / (0.5 * self.wheel_sep)
+elif (wl < 0 and wr < 0):
+		if (wl < wr):
+		  self.vx_vth[0] = wr*self.r_wheel
+		else:
+		  self.vx_vth[0] = wl*self.r_wheel
+		self.vx_vth[1] = -self.r_wheel * (wl - wr) / (0.5 * self.wheel_sep)
+else:
+  self.vx_vth[0] = 0
+	 self.vx_vth[1] = self.r_wheel * wr / (0.5 * self.wheel_sep)
+```
+Our robot is either going forwards, going backward or rotating in place. The if statement is to calculate the linear and angular velocity when it is going forwards. The elif statement is for when it is going backwards and the else statement is for when it is rotating in place.
+
+```python
         if (wl > wr):
             vx = wr*r_wheel
         else:
             vx = wl*r_wheel
-        vth = -r_wheel*(wl-wr)/(0.5*wheel_sep)
-    elif (wl < 0 and wr < 0):
-        if (wl < wr):
-            vx = wl*r_wheel
-        else:
-            vx = wl*r_wheel
-        vth = -r_wheel*(wl-wr)/(0.5*wheel_sep)
-    else:
-        vx = 0
-        vth = r_wheel*wr/(0.5*wheel_sep)
 ```
+Inside the if statement we check if the left wheel is rotating faster than the right wheel. If it is, our linear velocity is determined by the speed of the right wheel. The reason for this can be explained by looking at the velocity vectors in this situation:
+
+PICTURE OF VECTORS
+
+Here we can also see that when the left wheel is moving faster, it will make our robot rotate in the clockwise direction about the z-axis. This is, according to the convention used and as seen in the upper lefthand corner, a negative rotation about the z-axis.
 
 ## Publishing odometry information
 Publishing the pose and twist as well as the necessary transforms is fairly straightforward using this [tutorial](http://wiki.ros.org/navigation/Tutorials/RobotSetup/Odom#Using_tf_to_Publish_an_Odometry_transform) from the ROS wiki. This tutorial gives us the code written in C++, so we'll need to convert it to Python code.
@@ -402,86 +415,19 @@ Publishing the pose and twist as well as the necessary transforms is fairly stra
 Line 9 in the code of the code in the tutorial tells us that need to create a publisher object, here  named `odom_pub`, which publishes a `nav_msgs/Odometry` message on the topic called `odom`. 
 Line 10 tells us that we also need a transform broadcaster.
 
-How to create a publisher node in Python can be found [here](http://wiki.ros.org/ROS/Tutorials/WritingPublisherSubscriber%28python%29) and how to create a transform broadcaster can be found [here](http://wiki.ros.org/tf2/Tutorials/Writing%20a%20tf2%20broadcaster%20%28Python%29). 
+More details on how to create a publisher node in Python can be found [here](http://wiki.ros.org/ROS/Tutorials/WritingPublisherSubscriber%28python%29) and how to create a transform broadcaster can be found [here](http://wiki.ros.org/tf2/Tutorials/Writing%20a%20tf2%20broadcaster%20%28Python%29). 
 
-The code explained (full code can be found in `proof of concept phase/odometry_handler.py`):
+Publishing will be handled by the `Publisher` class. When we initialise this class we will create a ROS publisher named `odom_pub` and a tf2 broadcaster named `odom_broadcaster`. The `Publisher` class also contains two functions: `createTF` to create the message for the broadcaster and `createNavMsg` to create the message for the ROS publisher.
+
+The code is pretty self explanatory and can found [here](https://github.com/ongaroleandro/autonomous-mobile-robot/blob/main/ROS/src/odometry/src/publisher.py). The only thing I'll explain here is the addition modules we need to import.
+
 ```python
     import tf2_ros
     import tf_conversions
     import geometry_msgs.msg
     from nav_msgs.msg import Odometry
 ```
-
-We need some additional modules for our code. 
   - `tf2_ros` is needed to create the transform broadcaster
   - `tf_conversions` is needed to convert our orientation from a pitch, yaw, roll reprensation to a quaternion representation.
   - The `geometry_msgs.msg` module contains the TranformStamped class which is used by the broadcaster.
   - The odometry class is located in the `nav_msgs.msg` module.
-
-As stated before, the pose and twist calculation is not done on the arduino itself. The transform broadcast and the `odom` message needs to be published where we do this calculation which is in the message callback fucntion `calc_pos()` of the subscriber node. So the rest of the code is inside this function. 
-```python
-    current_time = rospy.Time.now()
-```
-Both the transform broadcast and the odom message need to contain the time. Creating a variable with the current time will ensure that they both have the exact (i.e. to the nanosecond) time.
-
-```python
-    odom_broadcaster = tf2_ros.TransformBroadcaster()
-    odom_trans = geometry_msgs.msg.TransformStamped()
-```
-Here we create the transform broadcaster object and the transform stamped object. The transform stamped object is just the message which gets sent by the transform broadcaster.
-
-```python
-    odom_trans.header.stamp = current_time
-    odom_trans.header.frame_id = "odom"
-    odom_trans.child_frame_id = "base_link"
-    odom_trans.transform.translation.x = x
-    odom_trans.transform.translation.y = y
-    odom_trans.transform.translation.z = 0.0
-    q = tf_conversions.transformations.quaternion_from_euler(0, 0, theta*np.pi/180)
-    odom_trans.transform.rotation.x = q[0]
-    odom_trans.transform.rotation.y = q[1]
-    odom_trans.transform.rotation.z = q[2]
-    odom_trans.transform.rotation.w = q[3]
-```
-We then populate the transform stamped object with the necessary data. The [geometry_msgs API](http://docs.ros.org/en/kinetic/api/geometry_msgs/html/msg/TransformStamped.html) specifies what we need to fill in.
-
-```python
-    odom_broadcaster.sendTransform(odom_trans)
-```
-After that we can publish the message using the transform broadcaster.
-
-```python
-    odom_pub = rospy.Publisher('odom', Odometry, queue_size=50)
-    odom = Odometry()
-```
-Next we create the publisher object and the odometry object. Again, the odometry object is just the message which will get sent by the publisher.
-
-```python
-    odom.header.stamp = current_time
-    odom.header.frame_id = "odom"
-
-    odom.pose.pose.position.x = x
-    odom.pose.pose.position.y = y
-    odom.pose.pose.position.z = 0.0
-    odom.pose.pose.orientation.x = q[0]
-    odom.pose.pose.orientation.y = q[1]
-    odom.pose.pose.orientation.z = q[2]
-    odom.pose.pose.orientation.w = q[3]
-
-    odom.child_frame_id = "base_link"
-    odom.twist.twist.linear.x = vx
-    odom.twist.twist.linear.y = 0
-    odom.twist.twist.linear.z = 0
-    odom.twist.twist.angular.x = 0
-    odom.twist.twist.angular.y = 0
-    odom.twist.twist.angular.z = vth
-```
-Here we populate the odometry object with the necessary data. As stated in the beginning, the [nav_msgs API](http://docs.ros.org/en/noetic/api/nav_msgs/html/msg/Odometry.html) gives us the details.
-
-```python
-    odom_pub.publish(odom)
-```
-Lastly, we also publish the odom message.
-
-Each time we receive a message on the `/arduino_data` topic, we publish a `nav_msgs/Odometry` message on the `/odom` topic. The problem with this implementation is that we cannot control the publishing rate of the `/odom` topic. To solve this problem we will be using classes. Three classes to be precise; the `OdometryHandler`class which has our main function, the `DataProcessor` class which handles the incoming arduino data and the `Publisher` class for publishing messages on the `/odom` topic. See the wiki for more details.
-
