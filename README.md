@@ -6,16 +6,7 @@ The purpose of this github page is to document my progress throughout the projec
 * [Hardware used](#hardware-used)
   * [Parts](#parts)
 * [Robot design](#robot-design)
-* [Setting up ROS melodic](#setting-up-ros-melodic)
-  * [ROS on RPI](#ros-on-rpi)
-  * [ROS on laptop](#ros-on-laptop)
-* [Installing RTABMAP](#installing-rtabmap)
-  * [RTABMAP on RPI](#rtabmap-on-rpi)
-    * [freenect](#freenect)
-    * [freenect_stack](#freenect_stack)
-    * [RTABMAP_ros](#rtabmap_ros) 
-  * [RTABMAP on laptop](#rtabmap-on-laptop)
-  * [Testing RTABMAP](#testing-rtabmap)
+* [Installing the software](#installing-the-software)
 * [Communication between RPI and Arduino](#communication-between-rpi-and-arduino)
 * [Controlling the motors](#controlling-the-motors)
   * [Arduino code for controlling the motors](#arduino-code-for-controlling-the-motors)
@@ -108,77 +99,8 @@ It's not the prettiest of things, but it works for now. I will tidy up the wirin
  - *[Motor drive](https://www.cytron.io/p-10amp-5v-30v-dc-motor-driver-2-channels)*
  - *[Metal ball caster](https://www.pololu.com/product/953/resources)*
 
-# Setting up ROS melodic
-## ROS on RPI
-Installing ROS melodic is pretty easy if you follow the [wiki](http://wiki.ros.org/melodic/Installation/Ubuntu). The first step, configuring the Ubuntu repositories, can be done on a headless setup by editing the sources.list file. See the [Ubuntu documentation](https://help.ubuntu.com/community/Repositories/Ubuntu) for more information. Also, installing the ROS-Base version will suffice.
-
-After installing ros we'll need to create a ROS workspace. Again, the ROS wiki has good [guide](http://wiki.ros.org/ROS/Tutorials/InstallingandConfiguringROSEnvironment) on how to do this. Since we're not going to create other workspaces we can add this workspace to bashrc with `echo "source ~/catkin_ws/devel/setup.bash" >> ~/.bashrc`.
-## ROS on laptop
-The installation proces is almost exactly the same as the installation on the RPI. The differences with the RPI installation are that you need to install the Dekstop-Full version and that you don't need to create a workspace.
-# Installing RTABMAP
-RTABMAP will be used for SLAM.
-## RTABMAP on RPI
-### freenect
-Freenect is the driver for the Kinect. At the time of writing the apt version of freenect is outdated, so we'll be building freenect from source. 
-```bash
-sudo apt-get install git-core cmake freeglut3-dev pkg-config build-essential libxmu-dev libxi-dev libusb-1.0-0-dev
-
-git clone git://github.com/OpenKinect/libfreenect.git
-
-cd libfreenect
-
-mkdir build
-
-cd build
-
-cmake ..
-
-make
-
-sudo make install
-
-sudo ldconfig /usr/local/lib64/
-```
-After building freenect from source we need to create a permission file so we can use the kinect as a normal user. This is done with `sudo nano /etc/udev/rules.d/51-kinect.rules` and entering the following in the empty file:
-```
-# ATTR{product}=="Xbox NUI Motor"
-SUBSYSTEM=="usb", ATTR{idVendor}=="045e", ATTR{idProduct}=="02b0", MODE="0666"
-# ATTR{product}=="Xbox NUI Audio"
-SUBSYSTEM=="usb", ATTR{idVendor}=="045e", ATTR{idProduct}=="02ad", MODE="0666"
-# ATTR{product}=="Xbox NUI Camera"
-SUBSYSTEM=="usb", ATTR{idVendor}=="045e", ATTR{idProduct}=="02ae", MODE="0666"
-# ATTR{product}=="Xbox NUI Motor"
-SUBSYSTEM=="usb", ATTR{idVendor}=="045e", ATTR{idProduct}=="02c2", MODE="0666"
-# ATTR{product}=="Xbox NUI Motor"
-SUBSYSTEM=="usb", ATTR{idVendor}=="045e", ATTR{idProduct}=="02be", MODE="0666"
-# ATTR{product}=="Xbox NUI Motor"
-SUBSYSTEM=="usb", ATTR{idVendor}=="045e", ATTR{idProduct}=="02bf", MODE="0666"
-```
-We can test if freenect is working by entering `lsusb` in a new terminal window when the Kinect is connected to the RPI. You should see the Kinect listed.
-
-*source: [freenect wiki](https://openkinect.org/wiki/Getting_Started#Ubuntu_Manual_Install)*
-
-### freenect_stack
-Thankfully, installing freenect_stack only requires one command: 
-```bash
-sudo apt install ros-melodic-freenect-stack
-```
-*source: [freenect_stack on the ROS wiki](http://wiki.ros.org/freenect_stack)*
-
-### RTABMAP_ros
-And so does RTAMAP_ros:
-```bash
-sudo apt install ros-melodic-rtabmap-ros
-```
-*source: [RTABMAP_ros on the ROS wiki](http://wiki.ros.org/rtabmap_ros)*
-
-## RTABMAP on laptop
-RTABMAP on our laptop will only be used to display stuff with rviz of rtabmap's version of rviz. Install with:
-```bash
-sudo apt install ros-melodic-rtabmap-ros
-```
-## Testing RTABMAP
-Follow the [remote mapping tutorial](http://wiki.ros.org/rtabmap_ros/Tutorials/RemoteMapping).
+# Installing the software
+Information on how to install the software we will be using can be found in the [wiki](https://github.com/ongaroleandro/autonomous-mobile-robot/wiki/Installing-the-software).
 # Communication between RPI and Arduino
 We'll use an Arduino to control the motors of our robot. The communication between the RPI and the Arduino will be done with [rosserial](http://wiki.ros.org/rosserial_arduino). Install rosserial on the RPI with:
 ```bash
