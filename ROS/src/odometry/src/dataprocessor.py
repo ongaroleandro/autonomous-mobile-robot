@@ -19,12 +19,6 @@ class DataProcessor(object):
 		self.x_y_theta_t = np.array([0, 0, 0, 0])
 		self.vx_vth = [0,0]
 
-		#TODO: create data variable instead of wl, wr and t_ard
-		#	   not really necessary but would be nice to always store the data
-		#self.wl = 0
-		#self.wr = 0
-		#self.t_ard = 0
-
 		self._createSubscriber()
 
 	def _createSubscriber(self):
@@ -39,8 +33,7 @@ class DataProcessor(object):
             self.sub = rospy.Subscriber(self.topic_name, Float32MultiArray, self.processData)
 
 	def processData(self, msg):
-		self.wl, self.wr, self.t_ard = self.extractData(msg)
-		#self.calcPoseTwist(wl, wr, t_ard)
+		self.wl, self.wr, self.t_ard = self.extractData(msg)  #TODO: create data variable instead of wl, wr and t_ard
 
 	def extractData(self, msg):
 
@@ -93,9 +86,3 @@ class DataProcessor(object):
 		self.calcPoseTwist(self.wl, self.wr, self.t_ard)
 
 		return self.x_y_theta_t, self.vx_vth
-
-
-#arduinoDP = DataProcessor(0.025, 0.210)
-#wl, wr, t_ard = arduinoDP.extractData([10,10,1])
-#arduinoDP.calcPoseTwist(wl, wr, t_ard)
-#print(arduinoDP.vx_vth)
