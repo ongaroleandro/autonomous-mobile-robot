@@ -1,0 +1,22 @@
+<launch>
+    <!-- sensors -->
+    <include file="$(find freenect_launch)/launch/examples/freenect-registered-xyzrgb.launch"> </include>
+
+    <node pkg="depthimage_to_laserscan" name="depthimage_to_laserscan" type="depthimage_to_laserscan" output="screen">
+        <remap from="image" to="camera/depth_registered/image_raw" />
+        <remap from="scan" to="depth_scan" />
+        <param name="output_frame_id" value="camera_depth_frame" />
+        <param name="range_min" value="0.45" />
+    </node>
+
+    <!-- odometry -->
+    <node pkg="rosserial_arduino" type="serial_node.py" name="serial_arduino" output="screen">
+        <param name="port" value="/dev/ttyACM0" />
+        <param name="baud" value="115200" />
+    </node>
+
+    <node pkg="odometry" type="foobar.py" name="odometry_handler_node"> </node>
+
+    <!-- tranforms -->
+    <node pkg="tf2_ros" type="static_transform_publisher" name="link1_broadcaster" args="0 0 0.19 0 0 0 base_link camera_link" output="screen"> </node>
+</launch>

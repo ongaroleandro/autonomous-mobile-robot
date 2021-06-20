@@ -1,0 +1,7 @@
+local_costmap:
+  global_frame: odom
+  rolling_window: true
+  
+  plugins:
+    - {name: obstacle_layer, type: "costmap_2d::VoxelLayer"}
+    - {name: inflation_layer, type: "costmap_2d::InflationLayer"}
