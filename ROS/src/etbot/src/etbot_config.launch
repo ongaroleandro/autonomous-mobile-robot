@@ -33,7 +33,7 @@
     <arg name="rgbd_sync" default="true"/>
 
     <group if="$(arg mapping)" ns="camera">
-        <node if="$(arg rgbd_sync)" pkg="nodelet" type="nodelet" name="rgbd_sync" args="load rtabma§p_ros/rgbd_sync camera_nodelet_manager" output="screen">
+        <node if="$(arg rgbd_sync)" pkg="nodelet" type="nodelet" name="rgbd_sync" args="load rtabmap_ros/rgbd_sync camera_nodelet_manager" output="screen">
             <param name="compressed_rate"  type="double" value="$(arg rate)"/>
             <param name="approx_sync"      type="bool"   value="$(arg approx_sync)"/>
 
