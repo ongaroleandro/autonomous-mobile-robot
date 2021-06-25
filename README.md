@@ -1,5 +1,3 @@
-The purpose of this github page is to document my progress throughout the project. In the future I also want this github page to serve as a guide for other people to build their own robot, so some of the text is written in this 'how to do stuff' way.
-
 # Table of Contents
 * [Introduction](#introduction)
 * [Software used](#software-used)
@@ -15,10 +13,22 @@ The purpose of this github page is to document my progress throughout the projec
 * [Reading motor encoders](#reading-motor-encoders)
   * [Arduino code for reading motor encoders](#arduino-code-for-reading-motor-encoders)
 * [Navigation stack](#navigation-stack)
-  * [Calculating the pose from odometry](#calculating-the-pose-from-odometry)  
-    * [Python code snippet](#python-code-snippet)  
-  * [Calculating the twist from odometry](#calculating-the-twist-from-odometry)
-  * [Publishing odometry information](#publishing-odometry-information) 
+  * [Odometry source node](#odometry-source-node) 
+    * [Calculating the pose from odometry](#calculating-the-pose-from-odometry)  
+      * [Python code snippet](#python-code-snippet)  
+    * [Calculating the twist from odometry](#calculating-the-twist-from-odometry)
+    * [Publishing odometry information](#publishing-odometry-information)
+  * [Creating our robot package](#creating-our-robot-package)
+    * [Robot configuration launch file](#robot-configuration-launch-file)
+    * [Costmap configuation files](#costmap-configuation-files)
+      * [Common configuration](#common-configuration) 
+      * [Global costmap configuration](#global-costmap-configuration)
+      * [Local costmap configuration](#local-costmap-configuration)
+    * [Base Local Planner configuration](#base-local-planner-configuration)
+    * [AMCL configuration](#AMCL-configuration)
+    * [Navigation stack launch file](#navigation-stack-launch-file)
+* [Creating a map](#creating-a-map)
+* [Sending navigation goals to our robot](#Sending-navigation-goals-to-our-robot)
 
 # Introduction
 This project came about because of the COVID-19 pandemic. In normal times I would have had the opportunity to work with the turtlebot3 for one of the courses I am enrolled in.
@@ -46,8 +56,8 @@ Tasks:
 - [x] Test code for 'OdometryHandler' class
 - [x] let arduino continuously publish encoder data
 - [x] See if we can run everything we need for gmapping 
-- [ ] Configure RTABMAP ROS
-- [ ] Testrun
+- [x] Configure RTABMAP ROS
+- [x] Testrun
 
 # Software used
 
@@ -218,9 +228,13 @@ Sending the currect time with the current speed reading is done in a hacky way. 
 # Navigation stack
 The navigation stack is essential for our robot since this is what makes our robot mobile. The navigation stack is well documented on the ROS wiki, and there's even a [tutorial](http://wiki.ros.org/navigation/Tutorials/RobotSetup) on how to set up a navigation stack.
 
-Here there is a handy image to give us an idea of the different components of the navigation stack. Note the blue boxes, these are the things we'll need to provide to the navigation stack. The bottom box, base controller, should seem familiar because we already made this part in [Controlling the motors](#controlling-the-motors). 
+On that wiki page there is a handy image to give us an idea of the different components of the navigation stack. Note the blue boxes, these are the things we'll need to provide to the navigation stack. The bottom box `base controller`, should seem familiar because we already made this part in [Controlling the motors](#controlling-the-motors). 
 
-Our first order of business is to create an odometry source node. We will create a ROS package called `odometry` with the command `catkin_create_pkg odometry geometry_msgs nav_msgs std_msgs tf2 tf2_ros rospy roscpp`. The odometry source node publishes messages on the `odom` topic. This topic contains a `nav_msgs/Odometry` message. 
+The `sensor sources` node on the left will be provided by `freenect_stack`. The only node we need to create ourselves is the `odometry source` node. 
+
+## Odometry source node
+
+We will create a ROS package called `odometry` with the command `catkin_create_pkg odometry geometry_msgs nav_msgs std_msgs tf2 tf2_ros rospy roscpp`. The odometry source node publishes messages on the `odom` topic. This topic contains a `nav_msgs/Odometry` message. 
 
 Looking at the [API](http://docs.ros.org/en/noetic/api/nav_msgs/html/msg/Odometry.html) of this message, we can see that it contains the pose and twist of our robot. The API also states that the pose is with respect to the frame specified in the header, while the twist is with repect to the child frame. According to [REP105](https://www.ros.org/reps/rep-0105.html), the header frame will be the odom frame and the child frame will be the base_link frame. The base_link moves with the robot while the odom frame is a fixed frame. At this point in time we'll assume the origin of the map frame and the origin of the  odom frame coincide and that our robot always starts at the origin of the odom frame.
 
@@ -236,7 +250,7 @@ We will make three classes; a `DataProcessor` class which subscribes to our ardu
 
 The code for the different classes can be found in `ROS/src/odometry/src` or by clicking [here](https://github.com/ongaroleandro/autonomous-mobile-robot/tree/main/ROS/src/odometry/src). In the next paragraph I will explain how we can calculate the pose of our robot from the odometry data.
 
-## Calculating the pose from odometry
+### Calculating the pose from odometry
 The [pose](http://docs.ros.org/en/noetic/api/geometry_msgs/html/msg/Pose.html) contains our position and orientation in free space. Our robot is restricted to a single plane, the XY plane, so the pose of our robot is the x- and y-position with respect to the origin and the angle with respect to the x-axis.
 
 The kinematics of a 2 wheel differential drive robot are well known. [This](https://www.hmc.edu/lair/ARW/ARW-Lecture01-Odometry.pdf) lecture by Chris Clark gives us the equations we need and also explains the derivation of them step by step. 
@@ -244,7 +258,7 @@ The equations are:
 
 ![pose equations](media/pose%20equations.png)
 
-### Python code snippet
+#### Python code snippet
 The calculation of the pose will be done in the `DataProcessor` class. A numpy array is created when a `DataProcessor` object is created. It is a 1x4 array called `x_y_theta_t`. This array stores the latest published x- and y- position and the angle θ as well as the time of publishing in seconds. More information on the time can be found in the section `reading motor encoder`.
 When the array is first created however, it is `[0, 0, 0, 0]` since we assumed our robot starts at the origin of the odom frame. 
 
@@ -297,7 +311,7 @@ self.x_y_theta_t = np.array([x, y, theta, t_ard])
 
 Finally we store the new x-position, y-position, θ and the time in our array x_y_theta_t.
 
-## Calculating the twist from odometry
+### Calculating the twist from odometry
 Apart from the pose we also need the twist of our robot. The twist is the linear velocity in the x-direction vx and the angular velocity in the z-direction vt. The twist is with respect to the base_link frame, i.e. the frame attached to our robot.
 
 Aside from the array `x_y_theta_t`, which gets initialised when a `DataProcessor` object is created, the array `vx_vth` also gets created. This array stores the latest linear and angular velocity which has been published.
@@ -334,7 +348,7 @@ Inside the if statement we check if the left wheel is rotating faster than the r
 
 Here we can also see that when the left wheel is moving faster, it will make our robot rotate in the clockwise direction about the z-axis. This is, according to the convention used and as seen in the upper lefthand corner, a negative rotation about the z-axis.
 
-## Publishing odometry information
+### Publishing odometry information
 Publishing the pose and twist as well as the necessary transforms is fairly straightforward using this [tutorial](http://wiki.ros.org/navigation/Tutorials/RobotSetup/Odom#Using_tf_to_Publish_an_Odometry_transform) from the ROS wiki. This tutorial gives us the code written in C++, so we'll need to convert it to Python code.
 
 Line 9 in the code of the code in the tutorial tells us that need to create a publisher object, here  named `odom_pub`, which publishes a `nav_msgs/Odometry` message on the topic called `odom`. 
@@ -356,3 +370,280 @@ The code is pretty self explanatory and can found [here](https://github.com/onga
   - `tf_conversions` is needed to convert our orientation from a pitch, yaw, roll reprensation to a quaternion representation.
   - The `geometry_msgs.msg` module contains the TranformStamped class which is used by the broadcaster.
   - The odometry class is located in the `nav_msgs.msg` module.
+
+## Creating our robot package
+Now it is finally time to create our robot package. We will name our package `etbot`. Go to `~/catkin_ws/src/` and enter the following command:
+```
+catkin_create_pkg etbot  depthimage_to_laserscan freenect_camera freenect_launch geometry_msgs nav_msgs std_msgs tf2 tf2_ros rosserial_arduino rospy roscpp
+```
+The dependencies of this package should seem familiar. `depthimage_to_laserscan freenect_camera freenect_launch` is for our Kinect. `geometry_msgs nav_msgs std_msgs tf2 tf2_ros` are the dependencies of our odometry package. `rosserial_arduino` is for reading our motor encoders and sending motor command to our motor and finally `rospy` is needed because we use python for most of our code. I have also added `roscpp` as a dependency for possible future use.
+
+You can find the pakcage and all the files we will be creating in the next sections [here](https://github.com/ongaroleandro/autonomous-mobile-robot/tree/main/ROS/src/etbot).
+### Robot configuration launch file
+Create the file `etbot_config.launch` in the `src` folder of the package. This launch file will start up all the necessary nodes of our robot. Paste the text below inside the newly created file.
+ 
+```xml
+<launch>
+    <!-- sensors -->
+    <include file="$(find freenect_launch)/launch/examples/freenect-registered-xyzrgb.launch"> </include>
+
+    <node pkg="depthimage_to_laserscan" name="depthimage_to_laserscan" type="depthimage_to_laserscan" output="screen">
+        <remap from="image" to="camera/depth_registered/image_raw" />
+        <remap from="scan" to="depth_scan" />
+        <param name="output_frame_id" value="camera_depth_frame" />
+        <param name="range_min" value="0.45" />
+    </node>
+
+    <!-- odometry -->
+    <node pkg="rosserial_arduino" type="serial_node.py" name="serial_arduino" output="screen">
+        <param name="port" value="/dev/ttyACM0" />
+        <param name="baud" value="115200" />
+    </node>
+
+    <node pkg="odometry" type="foobar.py" name="odometry_handler_node"> </node>
+
+    <!-- tranforms -->
+    <node pkg="tf2_ros" type="static_transform_publisher" name="link1_broadcaster" args="0 0 0.19 0 0 0 base_link camera_link" output="screen"> </node>
+
+    <!-- mapping -->
+    <arg name="mapping" default="false"/>
+    <group if="$(arg mapping)">
+
+        <node pkg="teleop_twist_keyboard" type="teleop_twist_keyboard.py" name="teleop_twist_keyboard" output="screen"> </node>
+    </group>
+
+    <!-- RTABMAP settings for mapping -->
+    <arg name="rate"  default="5"/>
+    <arg name="approx_sync" default="true" /> <!-- true for freenect driver -->
+    <arg name="rgbd_sync" default="true"/>
+
+    <group if="$(arg mapping)" ns="camera">
+        <node if="$(arg rgbd_sync)" pkg="nodelet" type="nodelet" name="rgbd_sync" args="load rtabmap_ros/rgbd_sync camera_nodelet_manager" output="screen">
+            <param name="compressed_rate"  type="double" value="$(arg rate)"/>
+            <param name="approx_sync"      type="bool"   value="$(arg approx_sync)"/>
+
+            <remap from="rgb/image"       to="rgb/image_rect_color"/>
+            <remap from="depth/image"     to="depth_registered/image_raw"/>
+            <remap from="rgb/camera_info" to="rgb/camera_info"/>
+
+            <remap from="rgbd_image"      to="rgbd_image"/>
+        </node>
+
+        <node unless="$(arg rgbd_sync)" pkg="nodelet" type="nodelet" name="data_throttle" args="load rtabmap_ros/data_throttle camera_nodelet_manager" output="screen">
+            <param name="rate"         type="double" value="$(arg rate)"/>
+            <param name="approx_sync"  type="bool"   value="$(arg approx_sync)"/>
+
+            <remap from="rgb/image_in"       to="rgb/image_rect_color"/>
+            <remap from="depth/image_in"     to="depth_registered/image_raw"/>
+            <remap from="rgb/camera_info_in" to="rgb/camera_info"/>
+
+            <remap from="rgb/image_out"       to="throttled/rgb/image_rect_color"/>
+            <remap from="depth/image_out"     to="throttled/depth_registered/image_raw"/>
+            <remap from="rgb/camera_info_out" to="throttled/rgb/camera_info"/>
+        </node>
+    </group>
+</launch>
+```
+What is inside should be pretty self explanatory. The only thing of note is the `mapping` argument. If you launch the file with `mapping:=true` some additional nodes, which are needed to create a map, are started. More info on how to create a map can be found [here](#creating-a-map).
+
+Next we will create the various configuration files needed to run the navigation stack.
+
+### Costmap configuation files 
+We need a configuration file for the global costmap as well as for the local costmap. Since some parameters are shared between the local and global costmap, we wil also create a common configuration file. So, create the following three files (also inside the `src` folder): `costmap_common_params.yaml`, `global_costmap_params.yaml` and `local_costmap_params.yaml`. 
+
+#### Common configuration
+Paste the following inside the `costmap_common_params.yaml` file:
+
+```yaml
+footprint: [[0.05, -0.15], [0.05, 0.15], [0, 0.15], [-0.15, 0], [0, -0.15]]
+footprint_padding: 0.03
+
+robot_base_frame: base_link
+update_frequency: 4.0
+publish_frequency: 3.0
+transform_tolerance: 0.5
+resolution: 0.05
+
+plugins: 
+  - {name: static_map_layer, type: "costmap_2d::StaticLayer"}
+  - {name: obstacle_layer, type: "costmap_2d::VoxelLayer"}
+  - {name: inflation_layer, type: "costmap_2d::InflationLayer"}
+
+static_map_layer:
+  map_topic: map
+  width: 6.0
+  height: 6.0
+  resolution: 0.05
+
+obstacle_layer:
+  observation_sources: laser_scan_sensor #point_cloud_sensor
+  laser_scan_sensor: {sensor_frame: camera_link, data_type: LaserScan, topic: depth_scan, marking: true, clearing: true}
+  #point_cloud_sensor: {sensor_frame: /camera_link, data_type: PointCloud2, topic: /camera/depth_registered/points, marking: true, clearing: true}
+  obstacle_range: 2.5
+  raytrace_range: 3.0
+  combination_method: 1
+
+
+inflation_layer:
+  inflation_radius: 0.10
+  cost_scaling_factor: 5.0
+```
+
+#### Global costmap configuration
+Luckily, the `global_costmap_params.yaml` file is a bit shorter:
+
+```yaml
+global_costmap:
+  global_frame: map
+  rolling_window: false
+  map_type: costmap 
+  
+  plugins:
+    - {name: static_map_layer, type: "costmap_2d::StaticLayer"}
+    - {name: inflation_layer, type: "costmap_2d::InflationLayer"}
+```
+
+#### Local costmap configuration
+The `local_costmap_params.yaml` is also brief:
+
+```yaml
+local_costmap:
+  global_frame: odom
+  rolling_window: true
+  
+  plugins:
+    - {name: obstacle_layer, type: "costmap_2d::VoxelLayer"}
+    - {name: inflation_layer, type: "costmap_2d::InflationLayer"}
+```
+### Base Local Planner configuration
+The local planner uses the Dynamic Window Approach (DWA) to navigate. For DWA to work, we need to give it the limits of our robot. That is the min and max velocities and accelerations.
+
+```yaml
+TrajectoryPlannerROS:
+  max_vel_x: 0.5
+  min_vel_x: 0.1
+  max_vel_theta: 1.0
+  min_in_place_vel_theta: 0.6
+
+  acc_lim_theta: 3.2
+  acc_lim_x: 1
+  acc_lim_y: 1
+
+  holonomic_robot: false
+```
+
+The `holonomic_robot` parameter needs to be set to false because our robot is not a holonomic robot. What do we mean by that? Well, our robot has 3 degrees of freedom (DoF); it can move in the x-direction, y-direction and rotate about the z-axis. However, we can only directly control 2 of those DoFs; our velocity in the x-direction and our rotation about the z-axis.
+
+### AMCL configuration
+The navigation stack uses AMCL to localise the robot. We will make a separate launch file called `amcl.launch` and place it inside the `src` folder of our `etbot` package. The launch file will include the following:
+
+```xml
+<launch>
+
+  <arg name="use_map_topic" default="true"/>
+  <arg name="scan_topic" default="/depth_scan" />
+  <arg name="base_frame_id" default="base_link" />
+  
+  
+  <node pkg="amcl" type="amcl" name="amcl"  output="screen">
+    <param name="use_map_topic" value="$(arg use_map_topic)"/>
+    <!-- Publish scans from best pose at a max of 10 Hz -->
+    <param name="odom_model_type" value="diff"/>
+    <param name="odom_alpha5" value="0.1"/>
+    <param name="gui_publish_rate" value="10.0"/>
+    <param name="laser_max_beams" value="60"/>
+    <param name="laser_max_range" value="12.0"/>
+    <param name="min_particles" value="500"/>
+    <param name="max_particles" value="2000"/>
+    <param name="kld_err" value="0.05"/>
+    <param name="kld_z" value="0.99"/>
+    <param name="odom_alpha1" value="0.2"/>
+    <param name="odom_alpha2" value="0.2"/>
+    <!-- translation std dev, m -->
+    <param name="odom_alpha3" value="0.2"/>
+    <param name="odom_alpha4" value="0.2"/>
+    <param name="laser_z_hit" value="0.5"/>
+    <param name="laser_z_short" value="0.05"/>
+    <param name="laser_z_max" value="0.05"/>
+    <param name="laser_z_rand" value="0.5"/>
+    <param name="laser_sigma_hit" value="0.2"/>
+    <param name="laser_lambda_short" value="0.1"/>
+    <param name="laser_model_type" value="likelihood_field"/>
+    <!-- <param name="laser_model_type" value="beam"/> -->
+    <param name="laser_likelihood_max_dist" value="2.0"/>
+    <param name="update_min_d" value="0.25"/>
+    <param name="update_min_a" value="0.2"/>
+    <param name="odom_frame_id" value="odom"/>
+    <param name="resample_interval" value="1"/>
+    <param name="transform_tolerance" value="0.5"/>
+    <param name="recovery_alpha_slow" value="0.0"/>
+    <param name="recovery_alpha_fast" value="0.0"/>
+    <param name="base_frame_id" value="$(arg base_frame_id)"/>
+    <remap from="scan" to="$(arg scan_topic)"/>
+  </node>
+
+</launch>
+```
+### Navigation stack launch file
+Next we will create the `move_base.launch` file to launch the navigation stack. I have opted to put this file in my home directory, but in theory it can be placed anywhere. You can find the file in this repo [here](https://github.com/ongaroleandro/autonomous-mobile-robot/blob/main/ROS/move_base.launch).
+
+The following should be pasted inside `move_base.launch`:
+
+```xml
+<launch>
+
+   <master auto="start"/>
+ <!-- Run the map server --> 
+    <node name="map_server" pkg="map_server" type="map_server" args="$(find etbot)/map/mymap.yaml"/>
+
+ <!--- Run AMCL --> 
+    <include file="$(find etbot)/src/amcl.launch" />
+
+   <node pkg="move_base" type="move_base" respawn="false" name="move_base" output="screen">
+    <rosparam file="$(find etbot)/src/costmap_common_params.yaml" command="load" ns="global_costmap" /> 
+    <rosparam file="$(find etbot)/src/costmap_common_params.yaml" command="load" ns="local_costmap" />
+    <rosparam file="$(find etbot)/src/local_costmap_params.yaml" command="load" />
+    <rosparam file="$(find etbot)/src/global_costmap_params.yaml" command="load" /> 
+    <rosparam file="$(find etbot)/src/base_local_planner_params.yaml" command="load" />
+ </node>
+
+</launch> 
+```
+
+As you can see, the launch file also starts the `map_server` node. This node published a map on the `/map` topic. In our case it publishes the map named `mymap.yaml`, which is located inside the `map` directory in our `etbot` package. We will create this map in the next section.
+
+# Creating a map
+Now that we have our `etbot` package as well as the `etbot_config` launch file, we can start making a map. We will be using RTABMAP to create our map. When we launch `etbot_config` with the argument `mapping:=true`, the RTABMAP node will be started. The `teleop_twist_keyboard` node will be started aswell.
+
+The stuff to launch the RTABMAP node was copied from the remote mapping guide on the rtabmap ros wiki page. You can find it [here](http://wiki.ros.org/rtabmap_ros/Tutorials/RemoteMapping) for more information.
+
+Alright, so to create a map we need to take the following steps:
+1. On the raspberry pi enter these two commands in the terminal: `export ROS_MASTER_URI=http://YOUR_RPI_IP:11311` and `export ROS_IP=YOUR_RPI_IP`.
+   You need to change `YOUR_RPI_IP` to the ip address of your raspberry pi. e.g. `192.168.0.123`
+2. Start `etbot_config.launch` with: `roslaunch etbot etbot_config.launch mapping:=true`
+3. On your laptop you need to enter these two commands in the terminal: `export ROS_MASTER_URI=http://YOUR_RPI_IP:11311` and `export ROS_IP=YOUR_LAPTOP_IP`.
+   As in step one, change `YOUR_RPI_IP` to the ip address of your raspberry pi. You also need to change `YOUR_LAPTOP_IP` to the ip address of your laptop.
+4. Start rtabmap on your laptop with: `roslaunch rtabmap_ros rtabmap.launch subscribe_rgbd:=true rgbd_topic:=/camera/rgbd_image compressed:=true visual_odometry:=false odom_topic:="/odom" subscribe_scan:=true scan_topic:="/depth_scan" rtabmap_args:="--delete_db_on_start --Reg/Strategy 0 --RGBD/NeighborLinkRefining false --RGBD/ProximityBySpace false --RGBD/AngularUpdate 0.01 --RGBD/LinearUpdate 0.01 --RGBD/OptimizeFromGraphEnd false --Reg/Force3DoF true --Vis/MinInliers 12 --max_depth 3.0"`. Where all these parameters in `rtabmap_args:=` come from, will be explained later.
+5. After entering the previous command a new window should open. However, go back to the terminal window of your raspberry pi because we need to move our robot with `teleop_twist_keyboard`.
+6. Move the robot though the environment you want to map. After you have gone everywhere you want to map, go back to the starting position.
+7. Open a new terminal window on your raspberry pi and enter the commands from step 1 again. After that enter the following command: `rosrun map_server map_saver map:=/rtabmap/grid_map -f mymap`.
+8. You should see `Waiting for the map` and then `received map` If you don't see `received map` you need to open a new terminal window on your laptop and enter the commands from step 2. After that you need to enter `rosservice call /publish_map 1 1 0`. Now you should see `received map` on your raspberry pi.
+9. The map will be saved in your home directory. It consists of two files: `mymap.pgm` and `mymap.yaml`.
+
+Now that we have the map, we need to create a `map` directory in the `etbot` package and place those two files inside of it.
+
+In step 4 we specified a lot of different paramaters for `rtabmap_args:=`. These parameters come from the rtabmap wiki [here](http://wiki.ros.org/rtabmap_ros/Tutorials/SetupOnYourRobot#Kinect_.2B-_Odometry_.2B-_Fake_2D_laser_from_Kinect). The parameters are situated under `<!-- RTAB-Map's parameters -->` in the launch file on that wiki page.
+
+# Sending navigation goals to our robot
+We finally have everything we need to send navigation goals to our robot.
+1. On the raspberry pi enter these two commands in the terminal: `export ROS_MASTER_URI=http://YOUR_RPI_IP:11311` and `export ROS_IP=YOUR_RPI_IP`.
+   You need to change `YOUR_RPI_IP` to the ip address of your raspberry pi. e.g. `192.168.0.123`.
+2. Start `etbot_config.launch` with: `roslaunch etbot etbot_config.launch`.
+3. Open another terminal window on your raspberry pi and type the commands from step 1 again. Then type: `roslaunch move_base.launch`.
+4. On your laptop you need to enter these two commands in the terminal: `export ROS_MASTER_URI=http://YOUR_RPI_IP:11311` and `export ROS_IP=YOUR_LAPTOP_IP`.
+5. Now enter `rosrun rviz rviz` in that terminal window.
+6. In rviz; open the `navigation_config.rviz` configuration file. (or follow [these](http://wiki.ros.org/navigation/Tutorials/Using%20rviz%20with%20the%20Navigation%20Stack) steps to create your own configuration file. One thing to note: to add the costmaps you just need to add a `map` and set the color scheme to `costmap`. Using `GridCells` does not work.)
+7. Next we will set the initial (rough) position of our robot on the map by clicking on `2D Pose Estimate` in the rviz window and then clicking and dragging where the robot is currently located on the map.
+8. Now we can click on `2D Nav Goal` and place a goal on our map by clicking and dragging.
+
+If all went well, your robot should  now start to move to the goal.
