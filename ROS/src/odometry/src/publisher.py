@@ -70,10 +70,3 @@ class Publisher(object):
 	def publishMessage(self, odom, odom_trans):
 		self.odom_broadcaster.sendTransform(odom_trans)
 		self.odom_pub.publish(odom)
-
-
-
-#pub = Publisher("odom", "base_link")
-#print(pub.createNavMsg(10, [1,1,0,10], [1,5]))
-
-
