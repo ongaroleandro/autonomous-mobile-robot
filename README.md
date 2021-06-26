@@ -449,7 +449,13 @@ What is inside should be pretty self explanatory. The only thing of note is the 
 Next we will create the various configuration files needed to run the navigation stack.
 
 ### Costmap configuation files 
-We need a configuration file for the global costmap as well as for the local costmap. Since some parameters are shared between the local and global costmap, we wil also create a common configuration file. So, create the following three files (also inside the `src` folder): `costmap_common_params.yaml`, `global_costmap_params.yaml` and `local_costmap_params.yaml`. 
+The navigation stack, or more specifically the move_base package, uses [costmap_2D](http://wiki.ros.org/costmap_2d) to generate two costmaps. One local costmap and one global costmap. We need a configuration file for the global costmap as well as for the local costmap. Since some parameters are shared between the local and global costmap, we wil also create a common configuration file. So, create the following three files (also inside the `src` folder): `costmap_common_params.yaml`, `global_costmap_params.yaml` and `local_costmap_params.yaml`. 
+
+Each costmap is made up of different layers. There are three different layers: the static layer, the obstacle layer and the inflation layer. The parameters for each layer can be found in their respective wiki pages: [static layer](http://wiki.ros.org/costmap_2d/hydro/staticmap), [obstacle layer](http://wiki.ros.org/costmap_2d/hydro/obstacles) and [inflation layer](http://wiki.ros.org/costmap_2d/hydro/inflation).
+
+The general costmap_2d parameters can be found [here](http://wiki.ros.org/costmap_2d#costmap_2d.2Flayered.Plugins). These parameters will be used by both the local and global costmaps.
+
+*side note: I found that the wiki page for navigation2 had a better explanation regarding costmap_2D. You can find that page [here](https://navigation.ros.org/configuration/packages/configuring-costmaps.html).*
 
 #### Common configuration
 Paste the following inside the `costmap_common_params.yaml` file:
