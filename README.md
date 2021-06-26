@@ -461,7 +461,7 @@ The general costmap_2d parameters can be found [here](http://wiki.ros.org/costma
 Paste the following inside the `costmap_common_params.yaml` file:
 
 ```yaml
-footprint: [[0.05, -0.15], [0.05, 0.15], [0, 0.15], [-0.15, 0], [0, -0.15]]
+footprint: [[0.0, 0.15], [-0.05, 0.14], [-0.07, 0.13], [-0.09, 0.12], [-0.1, 0.11], [-0.11, 0.1], [-0.12, 0.09], [-0.13, 0.08], [-0.13, 0.07], [-0.14, 0.06], [-0.14, 0.05], [-0.14, 0.04], [-0.15, 0.03], [-0.15, 0.02], [-0.15, 0.01], [-0.15, 0.0], [-0.15, -0.01], [-0.15, -0.02], [-0.15, -0.03], [-0.14, -0.04], [-0.14, -0.05], [-0.14, -0.06], [-0.13, -0.07], [-0.13, -0.08], [-0.12, -0.09], [-0.11, -0.1], [-0.1, -0.11], [-0.09, -0.12], [-0.07, -0.13], [-0.05, -0.14], [0.0, -0.15], [0.05, -0.15], [0.05, 0.15]]
 footprint_padding: 0.03
 
 robot_base_frame: base_link
@@ -494,6 +494,54 @@ inflation_layer:
   inflation_radius: 0.10
   cost_scaling_factor: 5.0
 ```
+Some further clarification on how this file is structured can be found below.
+
+```yaml
+footprint: [[0.0, 0.15], [-0.05, 0.14], [-0.07, 0.13], [-0.09, 0.12], [-0.1, 0.11], [-0.11, 0.1], [-0.12, 0.09], [-0.13, 0.08], [-0.13, 0.07], [-0.14, 0.06], [-0.14, 0.05], [-0.14, 0.04], [-0.15, 0.03], [-0.15, 0.02], [-0.15, 0.01], [-0.15, 0.0], [-0.15, -0.01], [-0.15, -0.02], [-0.15, -0.03], [-0.14, -0.04], [-0.14, -0.05], [-0.14, -0.06], [-0.13, -0.07], [-0.13, -0.08], [-0.12, -0.09], [-0.11, -0.1], [-0.1, -0.11], [-0.09, -0.12], [-0.07, -0.13], [-0.05, -0.14], [0.0, -0.15], [0.05, -0.15], [0.05, 0.15]]
+footprint_padding: 0.03
+
+robot_base_frame: base_link
+update_frequency: 4.0
+publish_frequency: 3.0
+transform_tolerance: 0.5
+resolution: 0.05
+```
+Here we specify the general costmap_2D parameters used by both the global and local costmap layer. The `footprint` parameter assumes the center of the robot has coordinates (0, 0) in the robot frame. The points you provide also need to go in either a clockwise or counterclockwise direction around the edges of your robot. You can find more details on how these points were calculated [here](https://github.com/ongaroleandro/autonomous-mobile-robot/wiki/Footprint-calculation).
+
+```yaml
+plugins: 
+  - {name: static_map_layer, type: "costmap_2d::StaticLayer"}
+  - {name: obstacle_layer, type: "costmap_2d::VoxelLayer"}
+  - {name: inflation_layer, type: "costmap_2d::InflationLayer"}
+```
+We give each layer a name.
+
+```yaml
+static_map_layer:
+  map_topic: map
+  width: 6.0
+  height: 6.0
+  resolution: 0.05
+```
+We then give the parameters for the static layer. Note the `static_map_layer`, this is the name we gave the static layer earlier.
+
+```yaml
+obstacle_layer:
+  observation_sources: laser_scan_sensor #point_cloud_sensor
+  laser_scan_sensor: {sensor_frame: camera_link, data_type: LaserScan, topic: depth_scan, marking: true, clearing: true}
+  #point_cloud_sensor: {sensor_frame: /camera_link, data_type: PointCloud2, topic: /camera/depth_registered/points, marking: true, clearing: true}
+  obstacle_range: 2.5
+  raytrace_range: 3.0
+  combination_method: 1
+```
+We do the same for the obstacle layer
+
+```yaml
+inflation_layer:
+  inflation_radius: 0.10
+  cost_scaling_factor: 5.0
+```
+Last but not least, the parameters for the inflation layer.
 
 #### Global costmap configuration
 Luckily, the `global_costmap_params.yaml` file is a bit shorter:
@@ -502,12 +550,14 @@ Luckily, the `global_costmap_params.yaml` file is a bit shorter:
 global_costmap:
   global_frame: map
   rolling_window: false
-  map_type: costmap 
   
   plugins:
     - {name: static_map_layer, type: "costmap_2d::StaticLayer"}
     - {name: inflation_layer, type: "costmap_2d::InflationLayer"}
 ```
+We can see that the global costmap only has 2 general costmap_2D parameters which are specific to it. Namely, the `global_frame` is the `map` frame and the global costmap should not be a rolling window.
+
+The paramaters for the static layer, obstacle layer and inflation layer for the global costmap are specified in the `costmap_common_params.yaml` file and thus don't have to be repeated here. 
 
 #### Local costmap configuration
 The `local_costmap_params.yaml` is also brief:
@@ -521,6 +571,10 @@ local_costmap:
     - {name: obstacle_layer, type: "costmap_2d::VoxelLayer"}
     - {name: inflation_layer, type: "costmap_2d::InflationLayer"}
 ```
+The local costmap also has 2 general costmap_2D parameters which are specific to it. The `global_frame` for the local costmap is `odom` frame. The local costmap is a rolling window.
+
+As with the `global_costmap_params.yaml` file, the paramaters for the three different layers for the local costmap are already specified in the `costmap_common_params.yaml` file and not need to be repeated in this file.
+
 ### Base Local Planner configuration
 The local planner uses the Dynamic Window Approach (DWA) to navigate. For DWA to work, we need to give it the limits of our robot. That is the min and max velocities and accelerations.
 
