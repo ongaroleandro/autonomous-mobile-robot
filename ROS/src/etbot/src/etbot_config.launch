@@ -15,7 +15,7 @@
         <param name="baud" value="57600" />
     </node>
 
-    <node pkg="odometry" type="foobar.py" name="odometry_handler_node"> </node>
+    <node pkg="odometry" type="OdometryHandler.py" name="odometry_handler_node"> </node>
 
     <!-- tranforms -->
     <node pkg="tf2_ros" type="static_transform_publisher" name="link1_broadcaster" args="0 0 0.19 0 0 0 base_link camera_link" output="screen"> </node>
