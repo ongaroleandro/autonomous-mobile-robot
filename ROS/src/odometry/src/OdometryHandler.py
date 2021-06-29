@@ -29,12 +29,12 @@ def startNode():
 
 	rospy.init_node('odometry_handler', anonymous = False) #initialise node
 	odomhandler = OdometryHandler() #create odometryhandler object
-        #start while loop
-        while not rospy.is_shutdown():
-            rate = rospy.Rate(10) #adjust publishing rate here
-            odomhandler.main()
-            rate.sleep()
-        rospy.spin() #stop node
+    rate = rospy.Rate(20) #adjust publishing rate here
+    #start while loop
+    while not rospy.is_shutdown():
+        odomhandler.main()
+        rate.sleep()
+    rospy.spin() #stop node
 
 
 if __name__ == "__main__":

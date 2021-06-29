@@ -52,7 +52,12 @@ class DataProcessor(object):
 		
 		x = self.x_y_theta_t[0] + delta_s * np.cos(self.x_y_theta_t[2] * np.pi / 180 + delta_theta * 0.5)		
 		y = self.x_y_theta_t[1] + delta_s * np.sin(self.x_y_theta_t[2] * np.pi / 180 + delta_theta * 0.5)
-		theta = self.x_y_theta_t[2] + delta_theta * 180 / np.pi  # FIX ME: theta needs to stay between -359 and +359 degrees
+		theta = self.x_y_theta_t[2] + delta_theta * 180 / np.pi 
+		if theta >= 360:
+			theta = theta - (360 * math.floor(theta / 360))
+		elif theta <= -360:
+			theta = abs(theta)
+			theta = -(theta - (360 * math.floor(theta / 360)))
 		
 		self.x_y_theta_t = np.array([x, y, theta, t_ard])
 
