@@ -5,7 +5,6 @@
   * [Parts](#parts)
 * [Robot design](#robot-design)
 * [Installing the software](#installing-the-software)
-* [Communication between RPI and Arduino](#communication-between-rpi-and-arduino)
 * [Controlling the motors](#controlling-the-motors)
   * [Arduino code for controlling the motors](#arduino-code-for-controlling-the-motors)
   * [Testing Arduino code](#testing-arduino-code)
@@ -111,22 +110,7 @@ It's not the prettiest of things, but it works for now. I will tidy up the wirin
 
 # Installing the software
 Information on how to install the software we will be using can be found in the [wiki](https://github.com/ongaroleandro/autonomous-mobile-robot/wiki/Installing-the-software).
-# Communication between RPI and Arduino
-We'll use an Arduino to control the motors of our robot. The communication between the RPI and the Arduino will be done with [rosserial](http://wiki.ros.org/rosserial_arduino). Install rosserial on the RPI with:
-```bash
-sudo apt install ros-melodic-rosserial-arduino
-sudo apt install ros-melodic-rosserial
-```
-To install the library for the Arduino IDE we have two options:
 
- 1. Use the library manager in the Arduino IDE. Search for rosserial and install version 0.7.9. (at the time of writing version 0.9.1 will give an error when compiling)
- 2. Let rosserial make the library with `rosrun rosserial_arduino make_libraries.py`. Follow the instructions on the [rosserial ros wiki](http://wiki.ros.org/rosserial_arduino/Tutorials/Arduino%20IDE%20Setup). 
-
-We can test if rosserial is working by using the [Hello World example](http://wiki.ros.org/rosserial_arduino/Tutorials/Hello%20World). 
-
-  * **NB:** To run rosserial we use the command `rosrun rosserial_python serial_node.py /dev/ttyACM0`. The `/dev/ttyACM0` part may be different on your setup. Run `dmesg` in a terminal window while the arduino is connected to the RPI.
-
-*source: [rosserial on the ROS wiki](http://wiki.ros.org/rosserial_arduino)*
 # Controlling the motors
 The ros topic `/cmd_vel` will receive commands from RTABMAP in the form of `geometry_msgs/Twist` messages. Looking at the [API](http://docs.ros.org/en/jade/api/geometry_msgs/html/msg/Twist.html) we can see that this message consists of two vectors; one for linear velocities and one for angular velocities.
 Since our robot can only move in a 2D plane we're only interested in the x and y component of the linear velocity vector and in the z component of the angular velocity vector.
