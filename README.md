@@ -208,19 +208,16 @@ Here we create our two encoder objects, one for the left encoder and one for the
   - The ticks per revolution caused some headscratching. At first I thought this was just the amount of pulses per revolution, so 1140. This is not the case however because we're using an interrupt which detects a change in voltage of the pin. Since a pulse has a rising edge and a falling edge, there are two changes per pulse, meaning we need to enter 2280 to get a correct speed reading.
 
 ```cpp
-void setup(){
  Timer1.initialize(deltaT);
  Timer1.attachInterrupt(readSpeed);
  attachInterrupt(0, read_motor_encoderL, CHANGE);
  attachInterrupt(1, read_motor_encoderR, CHANGE);
-} 
 ```
-With `Timer1.initialize(deltaT)` we create a timer of 50ms and with `Timer1.attachInterrupt(readSpeed)` we say that the method `readSpeed` needs to be executed each time the timer reaches 50ms.
+*The code above is located in the setup function of the Arduino.* With `Timer1.initialize(deltaT)` we create a timer of 50ms and with `Timer1.attachInterrupt(readSpeed)` we say that the method `readSpeed` needs to be executed each time the timer reaches 50ms.
 
 We also attach an interrupt to pin 0 and function `read_motor_encoderL` and pin 1 and function `read_motor_encoderR`. The functions can be found on lines 158 to 164 in the full code.
 
 ```cpp
-void loop(){
  int sec = nh.now().sec % 10000;  //this works
  double nsec = nh.now().nsec / 100000;
  double nsec2 = nsec / 10000;
@@ -229,10 +226,10 @@ void loop(){
  array_msg.data[1] = Rspeed;
  array_msg.data[2] = sec + nsec2;
  pub.publish(&array_msg); //publish message
-}
+
 ```
 
-Sending the currect time with the current speed reading is done in a hacky way. Apparantly the number returned by `nh.now().toSect()`is too big for the arduino to handle so we split it up in the most absurd way possible. We take the last four digits of the second part with `nh.now().sec % 10000`. We then divide the nanoseconds part in two stages (because doing it in one go does not work, for some reason). Then we add them together and assign it to the third element of our array message with `array_msg.data[2] = sec + nsec2`.
+*The code above is located in the loop function of the Arduino.* Sending the currect time with the current speed reading is done in a hacky way. Apparantly the number returned by `nh.now().toSect()`is too big for the arduino to handle so we split it up in the most absurd way possible. We take the last four digits of the second part with `nh.now().sec % 10000`. We then divide the nanoseconds part in two stages (because doing it in one go does not work, for some reason). Then we add them together and assign it to the third element of our array message with `array_msg.data[2] = sec + nsec2`.
 
 # Navigation stack
 The navigation stack is essential for our robot since this is what makes our robot mobile. The navigation stack is well documented on the ROS wiki, and there's even a [tutorial](http://wiki.ros.org/navigation/Tutorials/RobotSetup) on how to set up a navigation stack.
@@ -249,13 +246,13 @@ Looking at the [API](http://docs.ros.org/en/noetic/api/nav_msgs/html/msg/Odometr
 
 With these assumptions we can determine the pose from our odometry, i.e. the two wheel encoders. 
 
-We also want to publish at a rate of 10Hz while our arduino sends the encoder data at a much higher rate. We will be using classes to allow us to collect our arduino data and publish our messages at different rates. 
+We also want to publish at a rate of 20Hz while our arduino sends the encoder data at a much higher rate. We will be using classes to allow us to collect our arduino data and publish our messages at different rates. 
 
 We will make three classes; a `DataProcessor` class which subscribes to `/arduino_data`, a `Publisher` class which publishes messages on the `odom` topic and finally a `OdometryHandler` class which will be used to bring the previous two classes together. Below you can see the UML class diagram.
 
-*NOTE: using classes is not really necessary to publish odometry, you can publish the odometry in the message callback upon receiving the arduino data. The problem with this however is that you'll be continuously calculating the pose from the received arduino and thus wasting CPU power. Doing it this way is easier for testing though and that why I did it like this the first time. You can find the code in `PATH`. More information on that code can be found in the [wiki](https://github.com/ongaroleandro/autonomous-mobile-robot/wiki/Publishing-odometry-without-using-classes).*
-
 ![UML_diagram](https://mermaid.ink/img/eyJjb2RlIjoiY2xhc3NEaWFncmFtXG4gICAgT2RvbWV0cnlIYW5kbGVyIDx8LS0gRGF0YVByb2Nlc3NvclxuICAgIE9kb21ldHJ5SGFuZGxlciA8fC0tIFB1Ymxpc2hlclxuICAgIE9kb21ldHJ5SGFuZGxlciA6ICtEYXRhUHJvY2Vzc29yIGFyZHVpbm9fZGF0YV9wcm9jZXNzb3JcbiAgICBPZG9tZXRyeUhhbmRsZXIgOiArUHVibGlzaGVyIHB1YlxuICAgIE9kb21ldHJ5SGFuZGxlcjogK21haW4oKVxuXG4gICAgY2xhc3MgRGF0YVByb2Nlc3NvcntcbiAgICAgICsgdG9waWNfbmFtZSA6IFN0cmluZ1xuICAgICAgKyBzdWIgOiByb3NweVN1YnNjcmliZXJcbiAgICAgICsgcl93aGVlbCA6IGZsb2F0XG4gICAgICArIHdoZWVsX3NlcCA6IGZsb2F0XG4gICAgICArIHhfeV90aGV0YV90IDogYXJyYXlcbiAgICArIHZ4X3Z0aCA6IGFycmF5XG4gICAgKyBhcmR1aW5vX2RhdGEgOiBhcnJheVxuICAgICsgd2wgOiBmbG9hdFxuICAgICsgd3IgOiBmbG9hdFxuICAgICsgdF9hcmQgOiBmbG9hdFxuICAgICsgX19pbml0X18odG9waWNfbmFtZSwgcl93aGVlbCwgd2hlZWxfc2VwKVxuICAgICsgX2NyZWF0ZVN1YnNjcmliZXIoKVxuICAgICsgcHJvY2Vzc0RhdGEobXNnKVxuICAgICsgZXh0cmFjdERhdGEobXNnKVxuICAgICsgY2FsY1Bvc2VUd2lzdCh3bCwgd3IsIHRfYXJkKVxuICAgICsgZ2V0QnJvYWRjYXN0ZXJJbmZvKClcbiAgICArIGdldFB1Ymxpc2hlckluZm8oKVxuXG4gICAgfVxuICAgIGNsYXNzIFB1Ymxpc2hlcntcbiAgICArIHRvcGljX25hbWUgOiBTdHJpbmdcbiAgICAgICsgZnJhbWVfaWQgOiBTdHJpbmdcbiAgICArIGNoaWxkX2ZyYW1lX2lkIDogU3RyaW5nXG4gICAgKyBvZG9tX3B1YiA6IHJvc3B5UHVibGlzaGVyXG4gICAgKyBvZG9tX2Jyb2FkY2FzdGVyIDogcm9zcHlCcm9hZGNhc3RlclxuICAgIC0gX19pbml0X18odG9waWNfbmFtZSwgZnJhbWVfaWQsIGNoaWxkX2ZyYW1lX2lkKVxuICAgICsgZ2V0Q3VycmVudFRpbWUoKVxuICAgICsgY3JlYXRlVEYoY3VycmVudF90aW1lLCB4X3lfdGhldGFfdClcbiAgICArIGNyZWF0ZU5hdk1zZyhjdXJyZW50X3RpbWUsIHhfeV90aGV0YV90LCB2eF92dGgpXG4gICAgKyBwdWJsaXNoTWVzc2FnZShvZG9tLCBvZG9tX3RyYW5zKVxuICAgIH1cbiAgICAgICAgICAgICIsIm1lcm1haWQiOnsidGhlbWUiOiJkZWZhdWx0In0sInVwZGF0ZUVkaXRvciI6ZmFsc2UsImF1dG9TeW5jIjp0cnVlLCJ1cGRhdGVEaWFncmFtIjpmYWxzZX0)
+
+*NOTE: using classes is not really necessary to publish odometry, you can publish the odometry in the message callback upon receiving the arduino data. The problem with this however is that you'll be continuously calculating the pose from the received arduino and thus wasting CPU power. Doing it this way is easier for testing though and that why I did it like this the first time. You can find the code in `PATH`. More information on that code can be found in the [wiki](https://github.com/ongaroleandro/autonomous-mobile-robot/wiki/Publishing-odometry-without-using-classes).*
 
 The code for the different classes can be found in `ROS/src/odometry/src` or by clicking [here](https://github.com/ongaroleandro/autonomous-mobile-robot/tree/main/ROS/src/odometry/src). In the next paragraph I will explain how we can calculate the pose of our robot from the odometry data.
 
@@ -275,47 +272,60 @@ Two important variables get also created when we initialise the class, namely th
 
 With that as background knowledge it will be easier to understand the full code for doing the calculation:
 ```python
-def calcPoseTwist(self, wl, wr, t_ard):
-		if ((self.x_y_theta_t == [0, 0, 0, 0]).all()):
-			self.x_y_theta_t = np.array([0, 0, 0, t_ard])
+    def calcPoseTwist(self, wl, wr, t_ard):
+        if ((self.x_y_theta_t == [0, 0, 0, 0]).all()):
+            self.x_y_theta_t = np.array([0, 0, 0, t_ard])
 
-		delta_theta = (- wl * self.r_wheel * (t_ard - self.x_y_theta_t[3]) + wr * self.r_wheel * (t_ard - self.x_y_theta_t[3])) / self.wheel_sep
-		delta_s = (wl * self.r_wheel * (t_ard - self.x_y_theta_t[3]) + wr * self.r_wheel * (t_ard - self.x_y_theta_t[3])) * 0.5
-		
-		x = self.x_y_theta_t[0] + delta_s * np.cos(self.x_y_theta_t[2] * np.pi / 180 + delta_theta * 0.5)		
-		y = self.x_y_theta_t[1] + delta_s * np.sin(self.x_y_theta_t[2] * np.pi / 180 + delta_theta * 0.5)
-		theta = self.x_y_theta_t[2] + delta_theta * 180 / np.pi  # FIX ME: theta needs to stay between -359 and +359 degrees
-		
-		self.x_y_theta_t = np.array([x, y, theta, t_ard])
+        delta_theta = (- wl * self.r_wheel * (t_ard - self.x_y_theta_t[3]) + wr * self.r_wheel * (t_ard - self.x_y_theta_t[3])) / self.wheel_sep
+        delta_s = (wl * self.r_wheel * (t_ard - self.x_y_theta_t[3]) + wr * self.r_wheel * (t_ard - self.x_y_theta_t[3])) * 0.5
+        
+        x = self.x_y_theta_t[0] + delta_s * np.cos(self.x_y_theta_t[2] * np.pi / 180 + delta_theta * 0.5)       
+        y = self.x_y_theta_t[1] + delta_s * np.sin(self.x_y_theta_t[2] * np.pi / 180 + delta_theta * 0.5)
+        theta = self.x_y_theta_t[2] + delta_theta * 180 / np.pi 
+        if theta >= 360:
+            theta = theta - (360 * math.floor(theta / 360))
+        elif theta <= -360:
+            theta = abs(theta)
+            theta = -(theta - (360 * math.floor(theta / 360)))
+        
+        self.x_y_theta_t = np.array([x, y, theta, t_ard])
 ```
 
 The original equations are given in terms of distance, while our encoders give a speed. Luckily we can easily convert a speed to a distance by multiplying our speed with a Δt.  Let's look at the code in more detail:
 
 ```python
-def calcPoseTwist(self, wl, wr, t_ard):
-  if ((self.x_y_theta_t == [0, 0, 0, 0]).all()):
-    self.x_y_theta_t = np.array([0, 0, 0, t_ard])
+        if ((self.x_y_theta_t == [0, 0, 0, 0]).all()):
+            self.x_y_theta_t = np.array([0, 0, 0, t_ard])
 ```
 
 The if statement is there because the time contained in the message we receive is not the seconds elapsed since starting the node. The time we receive is the current time in seconds by using `nh.now()`, see the section on reading the motor encoders for more details. Without the if statement the first Δt we calculate would be enormous and incorrect.
 
 ```python
-delta_theta = (- wl * self.r_wheel * (t_ard - self.x_y_theta_t[3]) + wr * self.r_wheel * (t_ard - self.x_y_theta_t[3])) / self.wheel_sep
-delta_s = (wl * self.r_wheel * (t_ard - self.x_y_theta_t[3]) + wr * self.r_wheel * (t_ard - self.x_y_theta_t[3])) * 0.5
+        delta_theta = (- wl * self.r_wheel * (t_ard - self.x_y_theta_t[3]) + wr * self.r_wheel * (t_ard - self.x_y_theta_t[3])) / self.wheel_sep
+        delta_s = (wl * self.r_wheel * (t_ard - self.x_y_theta_t[3]) + wr * self.r_wheel * (t_ard - self.x_y_theta_t[3])) * 0.5
 ```
-Here we calculate Δθ and Δs. As stated before, the distance traveled is our linear velocity multiplied with a Δt. Δt is our current time minus the previous time. Our current time is in the message and our previous time is in the array x_y_theta_t. We get our previous time in the list by writing `x_y_theta_t[3]` 
+Here we calculate Δθ and Δs. As stated before, the distance traveled is our linear velocity multiplied with a Δt. Δt is our current time minus the previous time. Our current time is in the message and our previous time is in the array x_y_theta_t. We get our previous time in the list by writing `self.x_y_theta_t[3]` 
 
 ```python
-x = self.x_y_theta_t[0] + delta_s * np.cos(self.x_y_theta_t[2] * np.pi / 180 + delta_theta * 0.5)		
-y = self.x_y_theta_t[1] + delta_s * np.sin(self.x_y_theta_t[2] * np.pi / 180 + delta_theta * 0.5)
-theta = self.x_y_theta_t[2] + delta_theta * 180 / np.pi  # FIX ME: theta needs to stay between -359 and +359 degrees
+        x = self.x_y_theta_t[0] + delta_s * np.cos(self.x_y_theta_t[2] * np.pi / 180 + delta_theta * 0.5)       
+        y = self.x_y_theta_t[1] + delta_s * np.sin(self.x_y_theta_t[2] * np.pi / 180 + delta_theta * 0.5)
+        theta = self.x_y_theta_t[2] + delta_theta * 180 / np.pi 
 ```
-Now that we have Δθ and Δs we can calculate , x, y and θ.
-`np.cos()` and `np.sin()` need the angle in radians. The Δθ we calculated earlier is in radians, but for easy reading we will store our angle θ in degrees in our array x_y_theta_t.  This means we need to convert the θ from our array to radians. 
+Now that we have Δθ and Δs we can calculate x, y and θ.
+The numpy methods `np.cos()` and `np.sin()` need the angle in radians. The Δθ we calculated earlier is in radians, but for easy reading we will store our angle θ in degrees in our array x_y_theta_t.  This means we need to convert the θ from our array to radians. 
 *NOTE: we know the Δθ we calculated earlier is in radians because when looking at the derivation of the equations you can see that they used s=rθ to get the distance traveled, which is only valid for a θ in radians.*
 
 ```python
-self.x_y_theta_t = np.array([x, y, theta, t_ard])
+        if theta >= 360:
+            theta = theta - (360 * math.floor(theta / 360))
+        elif theta <= -360:
+            theta = abs(theta)
+            theta = -(theta - (360 * math.floor(theta / 360)))
+```
+With this little bit of code the angle θ stays between -359 degrees and +359 degrees. In practice this is not really needed, because the angle θ will get converted to a quaternion when we publish the position.
+
+```python
+        self.x_y_theta_t = np.array([x, y, theta, t_ard])
 ```
 
 Finally we store the new x-position, y-position, θ and the time in our array x_y_theta_t.
@@ -326,36 +336,37 @@ Apart from the pose we also need the twist of our robot. The twist is the linear
 Aside from the array `x_y_theta_t`, which gets initialised when a `DataProcessor` object is created, the array `vx_vth` also gets created. This array stores the latest linear and angular velocity which has been published.
 
 ```python
-if (wl > 0 and wr > 0):
-  if (wl > wr):
-    self.vx_vth[0] = wr * self.r_wheel
-  else:
-    self.vx_vth[0] = wl * self.r_wheel
-  self.vx_vth[1] = -self.r_wheel * (wl - wr) / (0.5 * self.wheel_sep)
-elif (wl < 0 and wr < 0):
-  if (wl < wr):
-    self.vx_vth[0] = wr*self.r_wheel
-  else:
-    self.vx_vth[0] = wl*self.r_wheel
-  self.vx_vth[1] = -self.r_wheel * (wl - wr) / (0.5 * self.wheel_sep)
-else:
-  self.vx_vth[0] = 0
-  self.vx_vth[1] = self.r_wheel * wr / (0.5 * self.wheel_sep)
+        if (wl > 0 and wr > 0):
+            if (wl > wr):
+                self.vx_vth[0] = wr * self.r_wheel
+            else:
+                self.vx_vth[0] = wl * self.r_wheel
+            self.vx_vth[1] = -self.r_wheel * (wl - wr) / (0.5 * self.wheel_sep)
+        elif (wl < 0 and wr < 0):
+            if (wl < wr):
+                self.vx_vth[0] = wr*self.r_wheel
+            else:
+                self.vx_vth[0] = wl*self.r_wheel
+            self.vx_vth[1] = -self.r_wheel * (wl - wr) / (0.5 * self.wheel_sep)
+        else:
+            self.vx_vth[0] = 0
+            self.vx_vth[1] = self.r_wheel * wr / (0.5 * self.wheel_sep)
 ```
-Our robot is either going forwards, going backward or rotating in place. The if statement is to calculate the linear and angular velocity when it is going forwards. The elif statement is for when it is going backwards and the else statement is for when it is rotating in place.
+Our robot is either going forwards, backwards or rotating in place. The if statement is to calculate the linear and angular velocity when it is going forwards. The elif statement is for when it is going backwards and the else statement is for when it is rotating in place.
 
 ```python
-if (wl > wr):
-  self.vx_vth[0] = wr * self.r_wheel
-else:
-  self.vx_vth[0] = wl * self.r_wheel
-self.vx_vth[1] = -self.r_wheel * (wl - wr) / (0.5 * self.wheel_sep)
+        if (wl > 0 and wr > 0):
+            if (wl > wr):
+                self.vx_vth[0] = wr * self.r_wheel
+            else:
+                self.vx_vth[0] = wl * self.r_wheel
+            self.vx_vth[1] = -self.r_wheel * (wl - wr) / (0.5 * self.wheel_sep)
 ```
 Inside the if statement we check if the left wheel is rotating faster than the right wheel. If it is, our linear velocity is determined by the speed of the right wheel. The reason for this can be explained by looking at the velocity vectors in this situation:
 
 ![velocity vectors](media/velocity_vectors.JPG.jpg)
 
-Here we can also see that when the left wheel is moving faster, it will make our robot rotate in the clockwise direction about the z-axis. This is, according to the convention used and as seen in the upper lefthand corner, a negative rotation about the z-axis.
+Here we can also see that when the left wheel is moving faster, it will make our robot rotate in the clockwise direction about the z-axis. This is, according to the convention used, a negative rotation about the z-axis. The convention cas be seen in the upper lefthand corner of the image.
 
 ### Publishing odometry information
 Publishing the pose and twist as well as the necessary transforms is fairly straightforward using this [tutorial](http://wiki.ros.org/navigation/Tutorials/RobotSetup/Odom#Using_tf_to_Publish_an_Odometry_transform) from the ROS wiki. This tutorial gives us the code written in C++, so we'll need to convert it to Python code.
@@ -406,10 +417,10 @@ Create the file `etbot_config.launch` in the `src` folder of the package. This l
     <!-- odometry -->
     <node pkg="rosserial_arduino" type="serial_node.py" name="serial_arduino" output="screen">
         <param name="port" value="/dev/ttyACM0" />
-        <param name="baud" value="115200" />
+        <param name="baud" value="57600" />
     </node>
 
-    <node pkg="odometry" type="foobar.py" name="odometry_handler_node"> </node>
+    <node pkg="odometry" type="OdometryHandler.py" name="odometry_handler_node"> </node>
 
     <!-- tranforms -->
     <node pkg="tf2_ros" type="static_transform_publisher" name="link1_broadcaster" args="0 0 0.19 0 0 0 base_link camera_link" output="screen"> </node>
