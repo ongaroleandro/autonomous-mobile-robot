@@ -115,7 +115,7 @@ Information on how to install the software we will be using can be found in the 
 The desired linear and angular velocities are sent in the form of `geometry_msgs/Twist` messages. In theory these messages can be published on any topic name but usually they are published on the `/cmd_vel` topic. We will also publish them on the `/cmd_vel` topic. Why that is becomes clear when we are setting up the navigation stack.
 
 ## Arduino code for controlling the motors
-See the full code in PATH_TO_CODE. The code has many comments, so it should be easy to follow. That is why I'm only going to explain how we convert the `geometry_msgs/Twist` message into something our motor driver can understand. 
+See the full code [here](https://github.com/ongaroleandro/autonomous-mobile-robot/blob/main/Arduino/motor-control-and-reading-encoder.ino). The code has many comments, so it should be easy to follow. That is why I'm only going to explain how we convert the `geometry_msgs/Twist` message into something our motor driver can understand. 
 
 Looking at the [API](http://docs.ros.org/en/melodic/api/geometry_msgs/html/msg/Twist.html) of the `geometry_msgs/Twist` message we can see that it contains two vectors; one for linear velocities and one for angular velocities. We're only interested in the linear velocity in the x-direction and the angular velocity in the z-direction. By only sending a linear velocity in the x-direction to the robot, it will move forwards or backwards. (positive velocity is forwards, negative is backwards) By only sending an angular velocity the robot will rotate in place in either the clockwise or counterclockwise direction. (positive angular velocity is counterclockwise and negative is clockwise) By sending a combination of a linear and angular velocity, the robot can follow a curved path.
 
@@ -144,15 +144,15 @@ Here we extract the angular velocity in the z-direction and linear velocity in t
 ```
 Here we calculate the angular velocity of the left and right wheel. This is the angular velocity of the wheels, so this is the angular velocity of the gearbox shaft, not the motorshaft. How we get these formulas is pretty straightforward. Let's look at the case where we send a positive linear velocity v (= v_L = v_R) and an angular velocity ω_z. We can draw this situation as follows:
 
-![lin_and_ang]()
+![lin_and_ang](media/controlling_motors_1.png)
 
 The black rectangle is the axle connecting both motors. Using superposition we can see separate the linear and angular velocities. We also know `v = r * ω`, so the angular velocity ω_z can be represented as two linear velocities in opposite directions. So we get:
 
-![superpos]()
+![superpos](media/controlling_motors_2.png)
 
 Here is `v_z = ω_z * (wheel_sep / 2)`. Using superposition again we get:
 
-![resutlt]()
+![resutlt](media/controlling_motors_3.png)
 
 So we can see the linear velocity of the left wheel is equal to `v_L - v_z` and the linear velocity of the right wheel is equal to `v_R + v_z`. To convert these linear velocites to angular velocities, we divide by the radius of the wheels `wheel_rad`. We also say that in this situation the angular velocites of the wheels are positive and that the left wheel is rotating in the clockwise direction and the right wheel in the counterclockwise direction (when looking straight at the wheel).
 
@@ -164,7 +164,7 @@ Okay, so now we have the angular velocites of the wheels. The next step would be
 ```
 Here we convert the angular velocities to a value the motor driver can understand. What can our motor understand? Our motor driver has four inputs, two for each motor. By supplying one input with a number between 0 and 255 we can vary the duty cycle of that motor between 0% and 100%. A duty cycle of 100% rotates the motor at full speed, and a 0% duty cycle makes the motor not rotate at all. By supplying a HIGH or LOW to the other input, we can specify in which direction the motor should turn. Which direction HIGH or LOW gives depends on how you have wired the motor terminals. In my case sending HIGH rotates the motors in a counterclockwise direction and thus LOW is the clockwise direction.
 
-Now you may have noticed that dw_l and/or dw_r become negative when w_l and/or w_r are negative. Later on in the code (line 116 to 156) you can see that we check if dw_l and/or dw_r are negative. If they're negative we take the absolute value. But, the negative value means something; the negative value means the direction should be reversed. Earlier we said a positive angular velocity of the left wheel means it is rotating in the clockwise direction, so a negative angular velocity means the left wheel should rotate in the counterclockwise direction.
+Now you may have noticed that dw_l and/or dw_r become negative when w_l and/or w_r are negative. Later on in the code (lines 116 to 156) you can see that we check if dw_l and/or dw_r are negative. If they're negative we take the absolute value. But, the negative value means something; the negative value means the direction should be reversed. Earlier we said a positive angular velocity of the left wheel means it is rotating in the clockwise direction, so a negative angular velocity means the left wheel should rotate in the counterclockwise direction.
 
 Now for the explantion of the `33.55`. There is a linear relationship between the duty cycle and the speed of the motor, so the `33.55` is just the gradient of this relationship. We can calculate the gradient by defining two points. One point is (0, 0), where the first zero is the speed of the motor and the second zero is the duty cycle. The second point is (maximum motor speed, 255), because at 100% duty cylce the motor will run at full speed. There are two ways to get maxium motor speed.
 
@@ -173,17 +173,14 @@ Now for the explantion of the `33.55`. There is a linear relationship between th
 
 ## Testing Arduino code
 We'll use [teleop_twist_keyboard](http://wiki.ros.org/teleop_twist_keyboard), which converts key presses into `geometry_msgs/Twist` messages which then get published to the `/cmd_vel` topic.
-Install with:
-```bash
-sudo apt-get install ros-melodic-teleop-twist-keyboard
-```
+
 We could test our code by running the following command
 
  1. Run `roscore`
  2. Run `rosrun rosserial_python serial_node.py /dev/ttyACM0` in a new terminal window.
- 3. Run `rosrun teleop_twist_keyboard teleop_twist_keyboard.py` in a new terminal window.
+ 3. Run `rosrun teleop_twist_keyboard teleop_twist_keyboard.py` in a another new terminal window.
 
-But to make our lives easier we're going to create a launch file. This way we'll only need to enter one command.
+But to make our lives easier we're going to create a launch file. This way we'll only need to enter one command. You can find the launch file [here](https://github.com/ongaroleandro/autonomous-mobile-robot/blob/main/ROS/src/testing/src/teleop.launch)
 
 ## Launch file
 The ros wiki has a [great](http://wiki.ros.org/ROS/Tutorials/UsingRqtconsoleRoslaunch#Using_roslaunch) tutorial on making a launch file and luckily it is pretty straightforward. Our launch file will have to launch rosserial and teleop_twist_keyboard. The launch file is located at `ROS/src/testing/src/`.
@@ -193,17 +190,10 @@ The encoder I am using has 12 counts per revolution which is equal to 3 pulses p
 
 To read the encoders I am using the encoder library from 1988Kramer, you can download the necessary files from [his github](https://github.com/1988kramer/motor_control). We will also need the [TimerOne](https://github.com/PaulStoffregen/TimerOne) library from Paul Stoffregen to get the encoder library to function correctly.
 
+We will publish the angular velocity read by the encoders on the `/arduino_data` topic. The message type we send is a `Float32ArrayMultiArray`. You can find the API for this message type [here](http://docs.ros.org/en/melodic/api/std_msgs/html/msg/Float32MultiArray.html).
+
 ## Arduino code for reading motor encoders
-The full code can be found in the Arduino folder of this github. Let's go over the code in detail:
-```cpp
-#include <TimerOne.h>
-#include <Encoder.h>
-```
-These are the headers we need.
-```cpp
-const long deltaT = 50000;
-```
-The `getSpeed` function of the encoder library by 1988Kramer needs to be called every deltaT microseconds, so here we're defining deltaT as 50000 microseconds or 50 miliseconds.
+The full code can be found [here](https://github.com/ongaroleandro/autonomous-mobile-robot/blob/main/Arduino/motor-control-and-reading-encoder.ino). Again, the code has many comments so I'll only explain some key points here.
 
 ```cpp
 Encoder motor_encoderL(2, 4, deltaT, 2280);
@@ -211,30 +201,11 @@ Encoder motor_encoderR(3, 5, deltaT, 2280);
 ```
 Here we create our two encoder objects, one for the left encoder and one for the right encoder. The encoder class needs 4 arguments; the pin on the arduino where the A phase of the encoder is connected, the pin on the arduino where the B phase of the encoder is connected, the time between `getSpeed` calls and the number of ticks per revolution.
 
-Pins 2 and 5 have to be used, since the encoder library uses interrupts and these are the only pins on an Arduino UNO which are interrupt pins. For the left encoder I am using pin 2 and pin 3. and for the right encoder I am using pin 3 and 5. In my setup I needed to connect the A phase of the left encoder to pin 2, the B phase of the left encoder to pin 4, the A phase of the right encoder to pin 5 and the B phase of the right encoder to pin 3 to get a postive speed reading from both encoders when the robot is moving forwards.
+  - Pins 2 and 5 have to be used, since the encoder library uses interrupts and these are the only pins on an Arduino UNO which are interrupt pins. For the left encoder I am using pin 2 and pin 3. For the right encoder I am using pin 3 and 5. In my setup I needed to connect the A phase of the left encoder to pin 2, the B phase of the left encoder to pin 4, the A phase of the right encoder to pin 5 and the B phase of the right encoder to pin 3 to get a postive speed reading from both encoders when the robot is moving forwards.
 
-As stated before, the deltaT defines how frequently we read the speed.
+  - The deltaT defines how frequently, in microseconds, we call the `getSpeed` method of the encoder library. Previously in the code (line 34) we define deltaT as 50000, so 50 miliseconds. An important thing to note however is that the deltaT here is purely for the speed calculation. We use the TimerOne library to actually call the `getSpeed` method every 50ms. Another note, the `getSpeed` functions returns the speed in degrees/sec.
 
-The ticks per revolution caused some headscratching. At first I thought this was just the amount of pulses per revolution, so 1140. This is not the case however because we're using an interrupt which detects a change in voltage of the pin. Since a pulse has a rising edge and a falling edge, there are two changes per pulse, meaning we need to enter 2280 to get a correct speed reading.
-
-```cpp
-int Lspeed;
-int Rspeed;
-
-void read_motor_encoderL(){
-  motor_encoderL.updateCount();
-}
-
-void read_motor_encoderR(){
-  motor_encoderR.updateCount();
-}
-
-void readSpeed(){
-  Lspeed = motor_encoderL.getSpeed();
-  Rspeed = motor_encoderR.getSpeed();
-}
-```
-`read_motor_encoderL` and `read_motor_encoderR` are the functions we will attach to the interrupts of pin 2 and pin 3.  As the name suggests, the function  `readSpeed` is used to get a speed reading. The `getSpeed` function of the encoder library by 1988Krames gives us the speed in degrees per second.
+  - The ticks per revolution caused some headscratching. At first I thought this was just the amount of pulses per revolution, so 1140. This is not the case however because we're using an interrupt which detects a change in voltage of the pin. Since a pulse has a rising edge and a falling edge, there are two changes per pulse, meaning we need to enter 2280 to get a correct speed reading.
 
 ```cpp
 void setup(){
@@ -244,25 +215,24 @@ void setup(){
  attachInterrupt(1, read_motor_encoderR, CHANGE);
 } 
 ```
-With `Timer1.initialize(deltaT)` we create a timer of 50ms and with `Timer1.attachInterrupt(readSpeed)` we say that the function `readSpeed` needs to be executed each time the timer reaches 50ms.
+With `Timer1.initialize(deltaT)` we create a timer of 50ms and with `Timer1.attachInterrupt(readSpeed)` we say that the method `readSpeed` needs to be executed each time the timer reaches 50ms.
+
+We also attach an interrupt to pin 0 and function `read_motor_encoderL` and pin 1 and function `read_motor_encoderR`. The functions can be found on lines 158 to 164 in the full code.
 
 ```cpp
 void loop(){
- int sec = nh.now().sec % 10000;
+ int sec = nh.now().sec % 10000;  //this works
  double nsec = nh.now().nsec / 100000;
  double nsec2 = nsec / 10000;
  
- if(Lspeed || Rspeed) {
-  array_msg.data[0] = Lspeed;
-  array_msg.data[1] = Rspeed;
-  array_msg.data[2] = sec + nsec2;
-  pub.publish(&array_msg); //publish message
- }
+ array_msg.data[0] = Lspeed;
+ array_msg.data[1] = Rspeed;
+ array_msg.data[2] = sec + nsec2;
+ pub.publish(&array_msg); //publish message
 }
 ```
-In our main arduino function we assign the value of Lspeed and Rspeed to the first and second element of our array message. For now we are only publishing our message if one of the motors is turning, this is just to make testing a little easier.
 
-Sending the currect time with the current speed reading is done in a hacky way. Apparantly the number returned by `nh.now().toSect()`is too big for the arduino to handle so we split it up in the most hacky way possible. We take the last four digits of the second part with `nh.now().sec % 10000` and we divide the nanosecond part in two stages (because doing it in one go does not work, for some reason). Then we add them together and assign it to the third element of our array message with `array_msg.data[2] = sec + nsec2`.
+Sending the currect time with the current speed reading is done in a hacky way. Apparantly the number returned by `nh.now().toSect()`is too big for the arduino to handle so we split it up in the most absurd way possible. We take the last four digits of the second part with `nh.now().sec % 10000`. We then divide the nanoseconds part in two stages (because doing it in one go does not work, for some reason). Then we add them together and assign it to the third element of our array message with `array_msg.data[2] = sec + nsec2`.
 
 # Navigation stack
 The navigation stack is essential for our robot since this is what makes our robot mobile. The navigation stack is well documented on the ROS wiki, and there's even a [tutorial](http://wiki.ros.org/navigation/Tutorials/RobotSetup) on how to set up a navigation stack.
@@ -281,7 +251,7 @@ With these assumptions we can determine the pose from our odometry, i.e. the two
 
 We also want to publish at a rate of 10Hz while our arduino sends the encoder data at a much higher rate. We will be using classes to allow us to collect our arduino data and publish our messages at different rates. 
 
-We will make three classes; a `DataProcessor` class which subscribes to our arduino data, a `Publisher` class which publishes messages on the `odom` topic and finally a `OdometryHandler` class which will be used to bring the previous two classes together. Below you can see the UML class diagram.
+We will make three classes; a `DataProcessor` class which subscribes to `/arduino_data`, a `Publisher` class which publishes messages on the `odom` topic and finally a `OdometryHandler` class which will be used to bring the previous two classes together. Below you can see the UML class diagram.
 
 *NOTE: using classes is not really necessary to publish odometry, you can publish the odometry in the message callback upon receiving the arduino data. The problem with this however is that you'll be continuously calculating the pose from the received arduino and thus wasting CPU power. Doing it this way is easier for testing though and that why I did it like this the first time. You can find the code in `PATH`. More information on that code can be found in the [wiki](https://github.com/ongaroleandro/autonomous-mobile-robot/wiki/Publishing-odometry-without-using-classes).*
 
