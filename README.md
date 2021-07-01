@@ -364,9 +364,9 @@ Our robot is either going forwards, backwards or rotating in place. The if state
 ```
 Inside the if statement we check if the left wheel is rotating faster than the right wheel. If it is, our linear velocity is determined by the speed of the right wheel. The reason for this can be explained by looking at the velocity vectors in this situation:
 
-![velocity vectors](media/velocity_vectors.JPG.jpg)
+![velocity vectors](media/calculating_twist_from_odometry.png)
 
-Here we can also see that when the left wheel is moving faster, it will make our robot rotate in the clockwise direction about the z-axis. This is, according to the convention used, a negative rotation about the z-axis. The convention cas be seen in the upper lefthand corner of the image.
+Here we can also see that when the left wheel is moving faster, it will make our robot rotate in the clockwise direction about the z-axis. This is, according to the convention used, a negative rotation about the z-axis. The convention can be seen in the upper lefthand corner of the image.
 
 ### Publishing odometry information
 Publishing the pose and twist as well as the necessary transforms is fairly straightforward using this [tutorial](http://wiki.ros.org/navigation/Tutorials/RobotSetup/Odom#Using_tf_to_Publish_an_Odometry_transform) from the ROS wiki. This tutorial gives us the code written in C++, so we'll need to convert it to Python code.
@@ -378,7 +378,7 @@ More details on how to create a publisher node in Python can be found [here](htt
 
 Publishing will be handled by the `Publisher` class. When we initialise this class we will create a ROS publisher named `odom_pub` and a tf2 broadcaster named `odom_broadcaster`. The `Publisher` class also contains two functions: `createTF` to create the message for the broadcaster and `createNavMsg` to create the message for the ROS publisher.
 
-The code is pretty self explanatory and can found [here](https://github.com/ongaroleandro/autonomous-mobile-robot/blob/main/ROS/src/odometry/src/publisher.py). The only thing I'll explain here is the addition modules we need to import.
+The code is pretty self explanatory and can found [here](https://github.com/ongaroleandro/autonomous-mobile-robot/blob/main/ROS/src/odometry/src/publisher.py). The only thing I'll explain here is the additional modules we need to import.
 
 ```python
     import tf2_ros
