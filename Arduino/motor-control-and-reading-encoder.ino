@@ -1,7 +1,7 @@
 #include <ArduinoHardware.h>
 #include <ros.h>
-#include <geometry_msgs/Twist.h>    //message type cmd_vel sends
-#include <std_msgs/Float32MultiArray.h>
+#include <geometry_msgs/Twist.h>    //message type of /cmd_vel topic
+#include <std_msgs/Float32MultiArray.h> //message type /arduino_data topic
 #include <ros/time.h>
 #include <TimerOne.h>
 #include <Encoder.h>
@@ -21,8 +21,6 @@ Truth table motor driver:
   high| high| low  | high  clockwise
  */
 
-const long deltaT = 50000;
-
 double w_r=0, w_l=0, dw_r=0, dw_l=0, abs_dw_l=0, abs_dw_r=0;  //Angular velocity of left motor w_l, right motor w_r 
 
 double wheel_rad = 0.025, wheel_sep = 0.210;  //wheel_rad is the wheel radius in meter,wheel_sep is distance between wheels in meter
@@ -33,7 +31,14 @@ void Motors_init();
 void MotorL(int Pulse_Width1);
 void MotorR(int Pulse_Width2);
 
-ros::NodeHandle nh; //rosserial, setup node. Allows program to subscribe/publish topics
+const long deltaT = 50000;
+Encoder motor_encoderL(2, 4, deltaT, 2280);  //create the encoder objects
+Encoder motor_encoderR(3, 5, deltaT, 2280);  //interrupt counts rising and falling edge of a pulse, so for 1140 pulses/rev there are 2280 changes 
+
+int Lspeed; //speed read from left motor encoder
+int Rspeed; //speed read from right motor encoder
+
+ros::NodeHandle nh; //rosserial, setup node. Allows program to subscribe/publish to topics
 
 /*
 Calculate angular velocities of wheels based on received Twist msg from cmd_vel
@@ -53,28 +58,22 @@ void messageCb( const geometry_msgs::Twist& msg){
   speed_lin = msg.linear.x;
   w_r = ((speed_lin/wheel_rad) + ((speed_ang*wheel_sep)/(2.0*wheel_rad)));
   w_l = ((speed_lin/wheel_rad) - ((speed_ang*wheel_sep)/(2.0*wheel_rad)));
-  dw_r = 33.55*w_r;    //dw_r is w_r transformed into motor driver value
+  dw_r = 33.55*w_r;  //dw_r is w_r transformed into motor driver value. motor driver (0 to 255)
   dw_l = 33.55*w_l;
 }
 
-ros::Subscriber<geometry_msgs::Twist> sub("cmd_vel", &messageCb ); //rosserial, subscibe to topic cmd_vel (this is the Twist msg i.e. vector3 linear and vector3 angular) and execute messageCb when a message from the topic is received
+ros::Subscriber<geometry_msgs::Twist> sub("cmd_vel", &messageCb ); //rosserial, subscibe to topic /cmd_vel (this is the Twist msg i.e. vector3 linear and vector3 angular) and execute messageCb when a message from the topic is received
 
 std_msgs::Float32MultiArray array_msg;  //type of message we want to publish
-ros::Publisher pub("arduino_data", &array_msg); //setup publisher node named arduino_data
-
-Encoder motor_encoderL(2, 4, deltaT, 2280);  //interrupt counts rising and falling edge of a pulse, so for 1120 pulses/rev there are 2240 changes
-Encoder motor_encoderR(3, 5, deltaT, 2280);
-
-int Lspeed; //speed read from left motor encoder
-int Rspeed; //speed read from right motor encoder
+ros::Publisher pub("arduino_data", &array_msg);  //setup publisher node which published messages on the /arduino_data topic
 
 void setup(){
  Motors_init();
  
- Timer1.initialize(deltaT); //set timer to deltaT ms
- Timer1.attachInterrupt(readSpeed); //call getSpeed() from encoder.h every deltaT ms.
- attachInterrupt(0, read_motor_encoderL, CHANGE);
- attachInterrupt(1, read_motor_encoderR, CHANGE);
+ Timer1.initialize(deltaT);  //set timer to deltaT ms
+ Timer1.attachInterrupt(readSpeed);  //call getSpeed() from encoder.h every deltaT ms. The readSpeed function can be found at the bottom of this code.
+ attachInterrupt(0, read_motor_encoderL, CHANGE);  //read pulses from left encoder. The read_motor_encoderL can be found at the bottom of this code.
+ attachInterrupt(1, read_motor_encoderR, CHANGE);  //read pulses from right encoder
  
  nh.initNode();
  nh.subscribe(sub); //start subscriber node
@@ -113,7 +112,7 @@ void Motors_init(){
  digitalWrite(DIR_2, LOW);
 }
 
-//Motor states, DIR_2 is opposite of DIR_1
+//Motor states (note: DIR_2 should be the opposite of DIR_1 when going forwards/backwards. DIR_2 and DIR_1 should be the same when rotating in place)
 void MotorL(int Pulse_Width1){
   if (Pulse_Width1 >= 255){
     analogWrite(PWM_1, 255);
