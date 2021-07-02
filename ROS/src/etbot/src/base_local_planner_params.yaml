@@ -1,11 +1,18 @@
+controller_fequency: 10.0
+
 TrajectoryPlannerROS:
-  max_vel_x: 0.5
-  min_vel_x: 0.1
+  #Robot configuration parameters
+  max_vel_x: 0.2
+  min_vel_x: 0.08
   max_vel_theta: 1.0
-  min_in_place_vel_theta: 0.6
+  min_vel_theta: -1.0
+  min_in_place_vel_theta: 0.5
 
   acc_lim_theta: 3.2
   acc_lim_x: 1
   acc_lim_y: 1
 
   holonomic_robot: false
+
+  #Trajectory scoring parameters
+  dwa: true
