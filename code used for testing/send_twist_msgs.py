@@ -33,13 +33,8 @@ class CommandCenter(object):
 
     def publish_reset(self):
         while not rospy.wait_for_message('odom', Odometry, timeout=1.0).pose.pose.position.x == 0.0:
-            connections = self.pub_reset.get_num_connections()
-
-            if connections > 0:
-                self.pub_reset.publish("reset")
-                break
-            else:
-                self.rate.sleep()
+            self.pub_reset.publish("reset")
+            self.rate.sleep()
 
     def write_to_csv(self):
         np.savetxt('test_data.csv', self.published_position, fmt="%1.3f", delimiter=",", header='x,y', comments='') #the comments argument is needed because by default the header string will be preced by a # since the header, for numpy, is a comment
@@ -54,10 +49,10 @@ class CommandCenter(object):
     def translate(self):
         available = False
         while not available:
-            if self.tfBuffer.can_transform('base_link', 'odom', rospy.Time()):
+            if self.tfBuffer.can_transform('odom', 'base_link', rospy.Time()):
                 available = True
-                break
-        start_transform = self.tfBuffer.lookup_transform('base_link', 'odom', rospy.Time())
+
+        start_transform = self.tfBuffer.lookup_transform('odom', 'base_link', rospy.Time())
         start_xpos = start_transform.transform.translation.x
         start_ypos = start_transform.transform.translation.y
 
@@ -66,46 +61,57 @@ class CommandCenter(object):
             self.publish_vel(self.createTwistMsg(self.linear_x, 0.0))
             self.rate.sleep()
             try:
-                current_trans = self.tfBuffer.lookup_transform('base_link', 'odom', rospy.Time())
+                current_transform = self.tfBuffer.lookup_transform('odom', 'base_link', rospy.Time())
             except (tf2_ros.LookupException, tf2_ros.ConnectivityException, tf2_ros.ExtrapolationException):
                 self.rate.sleep()
                 continue
 
-            current_xpos = current_trans.transform.translation.x
-            current_ypos = current_trans.transform.translation.x
+            current_xpos = current_transform.transform.translation.x
+            current_ypos = current_transform.transform.translation.y
 
-            if abs(current_xpos - start_xpos) >= self.desired_distance or abs(current_xpos - start_xpos) >= self.desired_distance:
+            if abs(current_xpos - start_xpos) >= self.desired_distance or abs(current_ypos - start_ypos) >= self.desired_distance:
                 self.publish_vel(self.createTwistMsg(0.0, 0.0))
                 if self.resetAfter:
-                    msg = rospy.wait_for_message('odom', Odometry, timeout=1.0) # In theory we could also just use the current_trans
+                    msg = rospy.wait_for_message('odom', Odometry, timeout=1.0) # In theory we could also just use the current_transform
                     self.published_position.append([msg.pose.pose.position.x, msg.pose.pose.position.y])
                     self.publish_reset()
                 done = True
 
     def rotate(self):
+        #checking if transform is available
         available = False
         while not available:
-            if self.tfBuffer.can_transform('base_link', 'odom', rospy.Time()):
+            if self.tfBuffer.can_transform('odom', 'base_link', rospy.Time()):
                 available = True
-        start_transform = self.tfBuffer.lookup_transform('base_link', 'odom', rospy.Time())
+        
+        #getting start transform
+        start_transform = self.tfBuffer.lookup_transform('odom', 'base_link', rospy.Time())
+        
+        #getting the angle in radians and converting is to degrees 
         start_angle = tf_conversions.transformations.euler_from_quaternion([start_transform.transform.rotation.x, start_transform.transform.rotation.y, start_transform.transform.rotation.z, start_transform.transform.rotation.w])[2]
         start_angle = start_angle * 180 / np.pi
         
         done = False
         while not done and not rospy.is_shutdown():
+            #publishing twist message with specified angular velocity
             self.publish_vel(self.createTwistMsg(0.0, self.angular_z))
             self.rate.sleep()
+            
+            #getting current transform
             try:
-                current_trans = self.tfBuffer.lookup_transform('base_link', 'odom', rospy.Time())
+                current_transform = self.tfBuffer.lookup_transform('odom', 'base_link', rospy.Time())
             except (tf2_ros.LookupException, tf2_ros.ConnectivityException, tf2_ros.ExtrapolationException):
                 self.rate.sleep()
                 continue
 
-            current_angle = tf_conversions.transformations.euler_from_quaternion([current_trans.transform.rotation.x, current_trans.transform.rotation.y, current_trans.transform.rotation.z, current_trans.transform.rotation.w])[2]
+            #getting the angle in radians and converting is to degrees 
+            current_angle = tf_conversions.transformations.euler_from_quaternion([current_transform.transform.rotation.x, current_transform.transform.rotation.y, current_transform.transform.rotation.z, current_transform.transform.rotation.w])[2]
             current_angle = current_angle * 180 / np.pi
 
+            #when converting from quaternions to euler angles the range becomes [-180, +180]. (e.g. a rotation of 181 degrees becomes -179 degrees) 
+            #so if starting angle is positive and the current angle becomes negative (and we were rotating in a C.C.W direction), then we know we have turned more than 180 degrees
             if start_angle > 0 and current_angle < 0:
-                current_angle = 360 - abs(current_angle) #needed because of how euler_from_quaternion behaves. If the angle of the robot is e.g. 181 deg. with respect to the odom frame x-axis, start_angle becomes -179 deg. 182 deg. becomes -178 deg. etc.
+                current_angle = 360 + current_angle 
             elif start_angle < 0 and current_angle > 0:
                 current_angle = current_angle - 360
 
@@ -193,5 +199,3 @@ if __name__ == "__main__":
             comc.rotate()
 
     rospy.spin()
-
-  
