@@ -142,11 +142,11 @@ Here we extract the angular velocity in the z-direction and linear velocity in t
   w_r = ((speed_lin/wheel_rad) + ((speed_ang*wheel_sep)/(2.0*wheel_rad)));
   w_l = ((speed_lin/wheel_rad) - ((speed_ang*wheel_sep)/(2.0*wheel_rad)));
 ```
-Here we calculate the angular velocity of the left and right wheel. This is the angular velocity of the wheels, so this is the angular velocity of the gearbox shaft, not the motorshaft. How we get these formulas is pretty straightforward. Let's look at the case where we send a positive linear velocity v (= v_L = v_R) and an angular velocity ω_z. We can draw this situation as follows:
+Here we calculate the angular velocity of the left and right wheel. This is the angular velocity of the wheels, i.e. the angular velocity of the gearbox shaft, not the motorshaft. How we get these formulas is pretty straightforward. Let's look at the case where we send a positive linear velocity v (= v_L = v_R) and a positive angular velocity ω_z. We can draw this situation as follows:
 
 ![lin_and_ang](media/controlling_motors_1.png)
 
-The black rectangle is the axle connecting both motors. Using superposition we can see separate the linear and angular velocities. We also know `v = r * ω`, so the angular velocity ω_z can be represented as two linear velocities in opposite directions. So we get:
+The black rectangle is the axle connecting both motors. Using superposition we can see separate the linear and angular velocities. We also know `v = r * ω`, so the angular velocity ω_z can be represented as two linear velocities in opposite directions. This gives us:
 
 ![superpos](media/controlling_motors_2.png)
 
@@ -154,9 +154,9 @@ Here is `v_z = ω_z * (wheel_sep / 2)`. Using superposition again we get:
 
 ![resutlt](media/controlling_motors_3.png)
 
-So we can see the linear velocity of the left wheel is equal to `v_L - v_z` and the linear velocity of the right wheel is equal to `v_R + v_z`. To convert these linear velocites to angular velocities, we divide by the radius of the wheels `wheel_rad`. We also say that in this situation the angular velocites of the wheels are positive and that the left wheel is rotating in the clockwise direction and the right wheel in the counterclockwise direction (when looking straight at the wheel).
+So we can see the linear velocity of the left wheel is equal to `v_L - v_z` and the linear velocity of the right wheel is equal to `v_R + v_z`. To convert these linear velocites to angular velocities, we divide by the radius of the wheels `wheel_rad`. We also say that in this situation the angular velocites of the wheels are positive and that the left wheel is rotating in the clockwise direction and the right wheel in the counterclockwise direction (when looking straight at that wheel).
 
-Okay, so now we have the angular velocites of the wheels. The next step would be to multiply this with the gearbox ratio (380 in our case) to get the angular velocity of the motor shaft. We don't need to this however because the manufacturer of our motor gives us the torque-speed characteristic at the output shaft of the gearbox. Why we need the torque-speed charactersitic will become clear soon.
+Okay, now we have the angular velocites of the wheels. The next step would be to multiply this with the gearbox ratio (380 in our case) to get the angular velocity of the motor shaft. We don't need to this however because the manufacturer of our motor gives us the torque-speed characteristic at the output shaft of the gearbox. Why we need the torque-speed charactersitic will become clear soon.
 
 ```cpp
   dw_r = 33.55*w_r;  //dw_r is w_r transformed into motor driver value. motor driver (0 to 255)
@@ -169,7 +169,7 @@ Now you may have noticed that dw_l and/or dw_r become negative when w_l and/or w
 Now for the explantion of the `33.55`. There is a linear relationship between the duty cycle and the speed of the motor, so the `33.55` is just the gradient of this relationship. We can calculate the gradient by defining two points. One point is (0, 0), where the first zero is the speed of the motor and the second zero is the duty cycle. The second point is (maximum motor speed, 255), because at 100% duty cylce the motor will run at full speed. There are two ways to get maxium motor speed.
 
   1. Using the torque-speed characteristic. By estimating how much torque the motors need to supply (at the gearbox side), we can see how fast the the output shaft of the gearbox will turn. This is will be the speed at 100% duty cycle.
-  2. After implementing the encoders into our code. In the next section you'll see we use `teleop_twist_keyboard` to send `geometry_msgs/Twist` messages. By increasing the linear velocity we send we can get the maximum speed. Be sure to read the speed when the motors are under load. (so do not put the robot on a box so the wheels can rotate freely).
+  2. After implementing the encoders into our code. In the next section you'll see we use `teleop_twist_keyboard` to send `geometry_msgs/Twist` messages. By increasing the linear velocity we send we can get the maximum speed. Be sure to read the speed when the motors are under load. i.e. do not put the robot on a box so the wheels can rotate freely.
 
 ## Testing Arduino code
 We'll use [teleop_twist_keyboard](http://wiki.ros.org/teleop_twist_keyboard), which converts key presses into `geometry_msgs/Twist` messages which then get published to the `/cmd_vel` topic.
@@ -599,17 +599,24 @@ As with the `global_costmap_params.yaml` file, the paramaters for the three diff
 The local planner uses the Dynamic Window Approach (DWA) to navigate. For DWA to work, we need to give it the limits of our robot. That is the min and max velocities and accelerations.
 
 ```yaml
+controller_fequency: 10.0
+
 TrajectoryPlannerROS:
-  max_vel_x: 0.5
-  min_vel_x: 0.1
+  #Robot configuration parameters
+  max_vel_x: 0.2
+  min_vel_x: 0.08
   max_vel_theta: 1.0
-  min_in_place_vel_theta: 0.6
+  min_vel_theta: -1.0
+  min_in_place_vel_theta: 0.5
 
   acc_lim_theta: 3.2
   acc_lim_x: 1
   acc_lim_y: 1
 
   holonomic_robot: false
+
+  #Trajectory scoring parameters
+  dwa: true
 ```
 
 The `holonomic_robot` parameter needs to be set to false because our robot is not a holonomic robot. What do we mean by that? Well, our robot has 3 degrees of freedom (DoF); it can move in the x-direction, y-direction and rotate about the z-axis. However, we can only directly control 2 of those DoFs; our velocity in the x-direction and our rotation about the z-axis.
