@@ -1,7 +1,9 @@
 #!/usr/bin/env python
 
-#IMPORTANT: this file needs to be used together with odometry_odometry_handler_collect_data.py
-#           You can find it in /code used for testing/OdometryHandler_collect_data/
+'''IMPORTANT:
+This file needs to be used together with odometry_odometry_handler_collect_data.py if you want to be able to reset the odom topic.
+You can find it in the repo in /code used for testing/OdometryHandler_collect_data/
+'''
 
 import rospy
 import numpy as np
@@ -22,7 +24,7 @@ class CommandCenter(object):
         self.angular_z = 0.0
         self.desired_distance = 0.0
         self.desired_angle = 0.0
-        self.published_position = []
+        self.data = []
 
         self.tfBuffer = tf2_ros.Buffer()
         self.listener = tf2_ros.TransformListener(self.tfBuffer)
@@ -37,7 +39,7 @@ class CommandCenter(object):
             self.rate.sleep()
 
     def write_to_csv(self):
-        np.savetxt('test_data.csv', self.published_position, fmt="%1.3f", delimiter=",", header='x,y', comments='') #the comments argument is needed because by default the header string will be preced by a # since the header, for numpy, is a comment
+        np.savetxt('data.csv', self.data, fmt="%1.3f", delimiter=",", header='x,y', comments='') #the comments argument is needed because by default the header string will be preced by a # since the header, for numpy, is a comment
 
     def createTwistMsg(self, x, z):
         twist_msg = Twist()
@@ -48,7 +50,7 @@ class CommandCenter(object):
 
     def translate(self):
         available = False
-        while not available:
+        while not available and not rospy.is_shutdown():
             if self.tfBuffer.can_transform('odom', 'base_link', rospy.Time()):
                 available = True
 
@@ -78,18 +80,29 @@ class CommandCenter(object):
                 done = True
 
     def rotate(self):
+        #checking if rotating clockwise or counter clockwise 
+        if self.angular_z > 0:
+            clockwise = False
+        else:
+            clockwise = True
+
         #checking if transform is available
         available = False
-        while not available:
+        while not available and not rospy.is_shutdown():
             if self.tfBuffer.can_transform('odom', 'base_link', rospy.Time()):
                 available = True
-        
+
         #getting start transform
         start_transform = self.tfBuffer.lookup_transform('odom', 'base_link', rospy.Time())
         
-        #getting the angle in radians and converting is to degrees 
+        #getting the angle from the transform
         start_angle = tf_conversions.transformations.euler_from_quaternion([start_transform.transform.rotation.x, start_transform.transform.rotation.y, start_transform.transform.rotation.z, start_transform.transform.rotation.w])[2]
-        start_angle = start_angle * 180 / np.pi
+
+        #changing interval from [-pi, pi] to [0, 2*pi]
+        if not clockwise and start_angle < 0:
+            start_angle = start_angle + 2*np.pi
+        elif clockwise and start_angle > 0:
+            start_angle = 2*np.pi - start_angle
         
         done = False
         while not done and not rospy.is_shutdown():
@@ -104,18 +117,18 @@ class CommandCenter(object):
                 self.rate.sleep()
                 continue
 
-            #getting the angle in radians and converting is to degrees 
+            #getting the angle from the transform
             current_angle = tf_conversions.transformations.euler_from_quaternion([current_transform.transform.rotation.x, current_transform.transform.rotation.y, current_transform.transform.rotation.z, current_transform.transform.rotation.w])[2]
-            current_angle = current_angle * 180 / np.pi
 
-            #when converting from quaternions to euler angles the range becomes [-180, +180]. (e.g. a rotation of 181 degrees becomes -179 degrees) 
-            #so if starting angle is positive and the current angle becomes negative (and we were rotating in a C.C.W direction), then we know we have turned more than 180 degrees
-            if start_angle > 0 and current_angle < 0:
-                current_angle = 360 + current_angle 
-            elif start_angle < 0 and current_angle > 0:
-                current_angle = current_angle - 360
+            #changing interval from [-pi, pi] to [0, 2*pi]
+            if not clockwise and current_angle < 0:
+                current_angle = current_angle + 2*np.pi
+            elif clockwise and current_angle > 0:
+                current_angle = current_angle - 2*np.pi
 
-            relative_angle = abs(abs(current_angle) - abs(start_angle)) 
+            #calculating the angle between the transforms and converting it to degrees
+            relative_angle = abs(current_angle - start_angle) * 180 / np.pi
+            print('start_angle: {} current angle: {} angle_turned: {}'.format(start_angle*180/np.pi, current_angle*180/np.pi, relative_angle))
 
             if relative_angle >= self.desired_angle:
                 self.publish_vel(self.createTwistMsg(0.0, 0.0))
@@ -137,8 +150,11 @@ if __name__ == "__main__":
 
     comc = CommandCenter()
 
+    print(bcolors.OKBLUE + 'Type "help" for all possible instructions.' + bcolors.ENDC)
+
     speeds, limits = False, False
     while not rospy.is_shutdown():
+        #checking if speeds and desired distance/angle have been set
         if not speeds and not limits:
             print(bcolors.FAIL + 'PLEASE SET SPEEDS AND DISTANCE/ANGLE WITH "setSpeeds" and "setLimits"' + bcolors.ENDC)
         elif not speeds:
@@ -146,11 +162,14 @@ if __name__ == "__main__":
         elif not limits:
             print(bcolors.FAIL + 'PLEASE SET DESIRED DISTANCE AND ANGLE WITH "setLimits"' + bcolors.ENDC)
 
+        #giving a warning if odom topic gets reset
         if comc.resetAfter:
             print(bcolors.WARNING + 'REMINDER: odom topic values will be reset to zero after a translation or rotation' + bcolors.ENDC)
 
+        #getting user input
         user_input = raw_input('Give instruction: ')
 
+        #checking what the user input is and acting accordingly
         if user_input == 'setSpeeds':
             speed_vel = raw_input('Give linear velocity (in m/s) and rotational velocity (in rad/s) separated by a comma: ')
             speed_vel = speed_vel.split(',')
@@ -182,15 +201,6 @@ if __name__ == "__main__":
 
         if user_input == 'publishReset':
             comc.publish_reset()
-
-        if user_input == 'help':
-            print(comc.published_position) #print all possible instructions
-
-        if user_input == 'write':
-            comc.write_to_csv()
-                                    
-        if user_input == 'stop':
-            rospy.signal_shutdown("typed stop")
      
         if user_input == 'go':
             comc.translate()
@@ -198,4 +208,24 @@ if __name__ == "__main__":
         if user_input == 'rotate':
             comc.rotate()
 
-    rospy.spin()
+        if user_input == 'write':
+            comc.write_to_csv()
+                                    
+        if user_input == 'stop':
+            rospy.signal_shutdown("typed stop")
+
+        if user_input == 'help':
+            instructions = [['Instruction', 'Description'],
+                            ['-----------', '-----------'],
+                            ['setSpeeds', 'Specify the linear and angular velocity.'],
+                            ['setLimits', 'Specify the desired translation distance and rotation angle.'],
+                            ['toggleResetAfter', 'Reset the odom topic to zero after translating.'],
+                            ['publishReset', 'Manually reset the odom topic to zero.'],
+                            ['go', 'Make the robot translate until desired distance is reached.'],
+                            ['rotate', 'Make the robot rotate until the desired angle is reached.'],
+                            ['write', 'Write data list to csv file (called data.csv).'],
+                            ['stop', 'Stop the node.']]
+            for i in range(len(instructions)):
+                print('{:<20} {:<8}'.format(instructions[i][0], instructions[i][1]))
+
+
